@@ -67,6 +67,10 @@ type internal LexBuffer<'Char> =
     /// Create a lex buffer suitable for Unicode lexing that reads characters from the given array.
     /// Important: does take ownership of the array.
     static member FromChars: char[] -> LexBuffer<char>
+
+    /// Create a lex buffer suitable for Unicode lexing that reads characters from the given string.
+    static member FromString: string -> LexBuffer<char>
+
     /// Create a lex buffer that reads character or byte inputs by using the given function.
     static member FromFunction: ('Char[] * int * int -> int) -> LexBuffer<'Char>
 

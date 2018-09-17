@@ -207,7 +207,7 @@ namespace Microsoft.FSharp.Text.Lexing
 
         static member FromBytes    (arr) = LexBuffer<byte>.FromArray(arr)
         static member FromChars    (arr) = LexBuffer<char>.FromArray(arr) 
-        static member FromString (s:string) = LexBuffer<char>.FromChars (s.ToCharArray())
+        static member FromString (s:string) = LexBuffer<char>.FromString(s)
 
         static member FromTextReader (tr:System.IO.TextReader)  : LexBuffer<char> = 
            LexBuffer<char>.FromFunction(tr.Read) 

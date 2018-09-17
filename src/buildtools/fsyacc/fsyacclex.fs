@@ -9,7 +9,7 @@ open FsLexYacc.FsYacc.Parser
 open System.Text
 open Internal.Utilities.Text.Lexing
 
-let lexeme  (lexbuf : LexBuffer<char>) = new System.String(lexbuf.Lexeme)
+let lexeme  (lexbuf : LexBuffer<_>) = LexBuffer<_>.LexemeString (lexbuf)
 let newline (lexbuf:LexBuffer<_>) = lexbuf.EndPos <- lexbuf.EndPos.NextLine
 
 let unexpected_char lexbuf =
