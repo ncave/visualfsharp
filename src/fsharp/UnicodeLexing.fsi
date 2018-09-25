@@ -6,8 +6,8 @@ open FSharp.Compiler.Text
 open Microsoft.FSharp.Text
 open Internal.Utilities.Text.Lexing
 
-type Lexbuf =  LexBuffer<char>
+type Lexbuf =  LexBuffer<LexBufferChar>
 val internal StringAsLexbuf : string -> Lexbuf
-val public FunctionAsLexbuf : (char [] * int * int -> int) -> Lexbuf
+val public FunctionAsLexbuf : (LexBufferChar[] * int * int -> int) -> Lexbuf
 val public UnicodeFileAsLexbuf :string * int option * (*retryLocked*) bool -> Lexbuf
 val public SourceTextAsLexbuf : ISourceText -> Lexbuf
