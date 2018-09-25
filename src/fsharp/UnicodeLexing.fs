@@ -13,12 +13,16 @@ open System.IO
 
 open Internal.Utilities.Text.Lexing
 
-type Lexbuf =  LexBuffer<char>
+type Lexbuf = LexBuffer<LexBufferChar>
 
 let StringAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, s:string) : Lexbuf =
+#if FABLE_COMPILER
+    LexBuffer<_>.FromString (supportsFeature, s)
+#else
     LexBuffer<_>.FromChars (supportsFeature, s.ToCharArray())
+#endif
 
-let FunctionAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, bufferFiller: char[] * int * int -> int) : Lexbuf =
+let FunctionAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, bufferFiller: LexBufferChar[] * int * int -> int) : Lexbuf =
     LexBuffer<_>.FromFunction(supportsFeature, bufferFiller)
 
 let SourceTextAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, sourceText) =
@@ -69,5 +73,9 @@ let UnicodeFileAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, file
                else 
                    reraise()
     let source = getSource 0
+#if FABLE_COMPILER
+    let lexbuf = LexBuffer<_>.FromString (supportsFeature, source)
+#else
     let lexbuf = LexBuffer<_>.FromChars(supportsFeature, source.ToCharArray())  
+#endif
     lexbuf
