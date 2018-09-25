@@ -581,6 +581,9 @@ module String =
         else None
 
     let getLines (str: string) =
+#if FABLE_COMPILER
+        System.Text.RegularExpressions.Regex.Split(str, "\r\n|\r|\n");
+#else
         use reader = new StringReader(str)
         [|
             let line = ref (reader.ReadLine())
