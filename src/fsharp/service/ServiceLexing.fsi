@@ -3,6 +3,7 @@
 namespace FSharp.Compiler.SourceCodeServices
 
 open FSharp.Compiler 
+open Internal.Utilities.Text.Lexing
 
 // Prevents warnings of experimental APIs within the signature file itself.
 #nowarn "57"
@@ -267,7 +268,7 @@ type FSharpSourceTokenizer =
     member CreateLineTokenizer: lineText:string -> FSharpLineTokenizer
 
     /// Create a tokenizer for a line of this source file using a buffer filler
-    member CreateBufferTokenizer : bufferFiller:(char[] * int * int -> int) -> FSharpLineTokenizer
+    member CreateBufferTokenizer : bufferFiller:(LexBufferChar[] * int * int -> int) -> FSharpLineTokenizer
     
 module internal TestExpose =     
     val TokenInfo : Parser.token -> (FSharpTokenColorKind * FSharpTokenCharKind * FSharpTokenTriggerClass)

@@ -31,6 +31,9 @@ type ISourceText =
 type StringText(str: string) =
 
     let getLines (str: string) =
+#if FABLE_COMPILER
+        System.Text.RegularExpressions.Regex.Split(str, "\r\n|\r|\n");
+#else
         use reader = new StringReader(str)
         [|
         let mutable line = reader.ReadLine()
@@ -42,6 +45,7 @@ type StringText(str: string) =
             // http://stackoverflow.com/questions/19365404/stringreader-omits-trailing-linebreak
             yield String.Empty
         |]
+#endif
 
     let getLines =
         // This requires allocating and getting all the lines.
@@ -174,6 +178,12 @@ namespace Internal.Utilities.Text.Lexing
                       0,
                       0)
 
+#if FABLE_COMPILER
+    type internal LexBufferChar = uint16
+#else
+    type internal LexBufferChar = char
+#endif
+
     type internal LexBufferFiller<'Char> = (LexBuffer<'Char> -> unit)
 
     and [<Sealed>]
@@ -230,8 +240,14 @@ namespace Internal.Utilities.Text.Lexing
         member lexbuf.BufferScanStart     with get() : int = bufferScanStart     and set v = bufferScanStart <- v
         member lexbuf.BufferAcceptAction  with get() = bufferAcceptAction  and set v = bufferAcceptAction <- v
         member lexbuf.RefillBuffer () = filler lexbuf
-        static member LexemeString(lexbuf:LexBuffer<char>) = 
-            new System.String(lexbuf.Buffer,lexbuf.BufferScanStart,lexbuf.LexemeLength)
+
+        static member LexemeString (lexbuf: LexBuffer<LexBufferChar>) =
+#if FABLE_COMPILER
+            let chars = Array.init lexbuf.LexemeLength (lexbuf.LexemeChar >> char)
+            new System.String(chars)
+#else
+            new System.String(lexbuf.Buffer, lexbuf.BufferScanStart, lexbuf.LexemeLength)
+#endif
 
         member lexbuf.IsPastEndOfStream 
            with get() = eof
@@ -271,9 +287,13 @@ namespace Internal.Utilities.Text.Lexing
             LexBuffer<'Char>.FromArrayNoCopy(supportsFeature, buffer)
 
         // Important: This method takes ownership of the array
-        static member FromChars (supportsFeature:LanguageFeature -> bool, arr:char[]) = LexBuffer.FromArrayNoCopy (supportsFeature, arr)
+        static member FromChars (supportsFeature:LanguageFeature -> bool, arr:LexBufferChar[]) = LexBuffer.FromArrayNoCopy (supportsFeature, arr)
 
         static member FromSourceText (supportsFeature: LanguageFeature -> bool, sourceText: ISourceText) =
+#if FABLE_COMPILER
+            let arr = Array.init sourceText.Length (fun i -> uint16 (sourceText.Item i))
+            LexBuffer.FromArrayNoCopy (supportsFeature, arr)
+#else
             let mutable currentSourceIndex = 0
             LexBuffer<char>.FromFunction(supportsFeature, fun (chars, start, length) ->
                 let lengthToCopy = 
@@ -288,16 +308,25 @@ namespace Internal.Utilities.Text.Lexing
                     currentSourceIndex <- currentSourceIndex + lengthToCopy
                     lengthToCopy
             )
+#endif
+
+        static member FromString (supportsFeature: LanguageFeature -> bool, s: string) =
+#if FABLE_COMPILER
+            let arr = Array.init s.Length (fun i -> uint16 s.[i])
+            LexBuffer.FromArrayNoCopy (supportsFeature, arr)
+#else
+            LexBuffer.FromArrayNoCopy (supportsFeature, s.ToCharArray())
+#endif
 
     module GenericImplFragments = 
-        let startInterpret(lexBuffer:LexBuffer<char>) = 
+        let startInterpret(lexBuffer:LexBuffer<LexBufferChar>) = 
             lexBuffer.BufferScanStart <- lexBuffer.BufferScanStart + lexBuffer.LexemeLength;
             lexBuffer.BufferMaxScanLength <- lexBuffer.BufferMaxScanLength - lexBuffer.LexemeLength;
             lexBuffer.BufferScanLength <- 0;
             lexBuffer.LexemeLength <- 0;
             lexBuffer.BufferAcceptAction <- -1;
 
-        let afterRefill (trans: uint16[][],sentinel,lexBuffer:LexBuffer<char>,scanUntilSentinel,endOfScan,state,eofPos) = 
+        let afterRefill (trans: uint16[][],sentinel,lexBuffer:LexBuffer<LexBufferChar>,scanUntilSentinel,endOfScan,state,eofPos) = 
             // end of file occurs if we couldn't extend the buffer 
             if lexBuffer.BufferScanLength = lexBuffer.BufferMaxScanLength then  
                 let snew = int trans.[state].[eofPos] // == EOF 
@@ -311,9 +340,9 @@ namespace Internal.Utilities.Text.Lexing
             else 
                 scanUntilSentinel lexBuffer state
 
-        let onAccept (lexBuffer:LexBuffer<char>,a) = 
-            lexBuffer.LexemeLength <- lexBuffer.BufferScanLength;
-            lexBuffer.BufferAcceptAction <- a;
+        let onAccept (lexBuffer:LexBuffer<LexBufferChar>, a) = 
+            lexBuffer.LexemeLength <- lexBuffer.BufferScanLength
+            lexBuffer.BufferAcceptAction <- a
 
     open GenericImplFragments
 
@@ -338,12 +367,16 @@ namespace Internal.Utilities.Text.Lexing
                         // ways
                         let baseForUnicodeCategories = numLowUnicodeChars+numSpecificUnicodeChars*2
                         let unicodeCategory = 
+#if FABLE_COMPILER
+                            System.Char.GetUnicodeCategory(char inp)
+#else
                             System.Char.GetUnicodeCategory(inp)
+#endif
                         //System.Console.WriteLine("inp = {0}, unicodeCategory = {1}", [| box inp; box unicodeCategory |]);
                         int trans.[state].[baseForUnicodeCategories + int32 unicodeCategory]
                     else 
                         // This is the specific unicode character
-                        let c = char (int trans.[state].[baseForSpecificUnicodeChars+i*2])
+                        let c = trans.[state].[baseForSpecificUnicodeChars+i*2]
                         //System.Console.WriteLine("c = {0}, inp = {1}, i = {2}", [| box c; box inp; box i |]);
                         // OK, have we found the entry for a specific unicode character?
                         if c = inp
@@ -365,7 +398,7 @@ namespace Internal.Utilities.Text.Lexing
                 afterRefill (trans,sentinel,lexBuffer,scanUntilSentinel,lexBuffer.EndOfScan,state,eofPos)
             else
                 // read a character - end the scan if there are no further transitions 
-                let inp = lexBuffer.Buffer.[lexBuffer.BufferScanPos]
+                let inp = uint16 lexBuffer.Buffer.[lexBuffer.BufferScanPos]
                 
                 // Find the new state
                 let snew = lookupUnicodeCharacters state inp
@@ -383,7 +416,7 @@ namespace Internal.Utilities.Text.Lexing
         //      30 entries, one for each UnicodeCategory
         //      1 entry for EOF
 
-        member tables.Interpret(initialState,lexBuffer : LexBuffer<char>) = 
+        member tables.Interpret(initialState, lexBuffer: LexBuffer<LexBufferChar>) = 
             startInterpret(lexBuffer)
             scanUntilSentinel lexBuffer initialState
 

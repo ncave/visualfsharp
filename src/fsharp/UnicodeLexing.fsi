@@ -7,11 +7,11 @@ open FSharp.Compiler.Features
 open FSharp.Compiler.Text
 open Internal.Utilities.Text.Lexing
 
-type Lexbuf =  LexBuffer<char>
+type Lexbuf =  LexBuffer<LexBufferChar>
 
 val internal StringAsLexbuf: (LanguageFeature -> bool) * string -> Lexbuf
 
-val public FunctionAsLexbuf: (LanguageFeature -> bool) * (char [] * int * int -> int) -> Lexbuf
+val public FunctionAsLexbuf: (LanguageFeature -> bool) * (LexBufferChar[] * int * int -> int) -> Lexbuf
 
 val public SourceTextAsLexbuf: (LanguageFeature -> bool) * ISourceText -> Lexbuf
 
