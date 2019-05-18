@@ -82,9 +82,40 @@ type public SemanticClassificationType =
     | Operator
     | Disposable
 
+[<Sealed>]
+type internal TypeCheckInfo =
+    internal new :
+        tcConfig: TcConfig *
+        tcGlobals: TcGlobals *
+        ccuSigForFile: ModuleOrNamespaceType *
+        thisCcu: CcuThunk *
+        tcImports: TcImports *
+        tcAccessRights: AccessibilityLogic.AccessorDomain *
+        projectFileName: string *
+        mainInputFileName: string *
+        sResolutions: TcResolutions *
+        sSymbolUses: TcSymbolUses *
+        sFallback: NameResolutionEnv *
+        loadClosure : LoadClosure option *
+        reactorOps : IReactorOperations *
+        checkAlive : (unit -> bool) *
+        textSnapshotInfo: obj option *
+        implFileOpt: TypedImplFile option *
+        openDeclarations: OpenDeclaration[]
+            -> TypeCheckInfo
+    member ScopeResolutions: TcResolutions
+    member ScopeSymbolUses: TcSymbolUses
+    member TcGlobals: TcGlobals
+    member TcImports: TcImports
+    member CcuSigForFile: Tast.ModuleOrNamespaceType
+    member ThisCcu: Tast.CcuThunk
+    member ImplementationFile: TypedImplFile option
+
 /// A handle to the results of CheckFileInProject.
 [<Sealed>]
 type public FSharpCheckFileResults =
+    internal new : filename: string * errors: FSharpErrorInfo[] * scopeOptX: TypeCheckInfo option * dependencyFiles: string[] * builderX: IncrementalBuilder option * reactorOpsX:IReactorOperations * keepAssemblyContents: bool -> FSharpCheckFileResults
+
     /// The errors returned by parsing a source file.
     member Errors : FSharpErrorInfo[]
 
@@ -261,6 +292,7 @@ type public FSharpCheckFileResults =
 /// A handle to the results of CheckFileInProject.
 [<Sealed>]
 type public FSharpCheckProjectResults =
+    internal new : projectFileName:string * tcConfigOption: TcConfig option * keepAssemblyContents: bool * errors: FSharpErrorInfo[] * details:(TcGlobals*TcImports*Tast.CcuThunk*Tast.ModuleOrNamespaceType*TcSymbolUses list*TypeChecker.TopAttribs option*CompileOps.IRawFSharpAssemblyData option * ILAssemblyRef * AccessibilityLogic.AccessorDomain * Tast.TypedImplFile list option * string[]) option -> FSharpCheckProjectResults
 
     /// The errors returned by processing the project
     member Errors: FSharpErrorInfo[]
@@ -306,6 +338,7 @@ type public FSharpParsingOptions =
       IsExe: bool
     }
     static member Default: FSharpParsingOptions
+    static member internal FromTcConfig: tcConfig: TcConfig * sourceFiles: string[] * isInteractive: bool -> FSharpParsingOptions
 
 /// <summary>A set of information describing a project or script build configuration.</summary>
 type public FSharpProjectOptions = 
@@ -354,6 +387,10 @@ type public FSharpProjectOptions =
       Stamp: int64 option
     }
          
+
+module internal Parser =
+    val internal parseFile: sourceText: ISourceText * filename: string * options: FSharpParsingOptions * userOpName: string * suggestNamesForErrors: bool -> FSharpErrorInfo [] * ParsedInput option * bool
+
 /// The result of calling TypeCheckResult including the possibility of abort and background compiler not caught up.
 [<RequireQualifiedAccess>]
 type public FSharpCheckFileAnswer =
