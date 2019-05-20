@@ -74,6 +74,7 @@ type ILModuleReader =
     /// ILModuleReader objects only need to be explicitly disposed if memory mapping is used, i.e. reduceMemoryUsage = false
     inherit System.IDisposable
 
+#if !FABLE_COMPILER
 
 /// Open a binary reader, except first copy the entire contents of the binary into 
 /// memory, close the file and ensure any subsequent reads happen from the in-memory store. 
@@ -81,6 +82,8 @@ type ILModuleReader =
 val internal OpenILModuleReader: string -> ILReaderOptions -> ILModuleReader
 
 val internal ClearAllILModuleReaderCache : unit -> unit
+
+#endif
 
 /// Open a binary reader based on the given bytes. 
 val internal OpenILModuleReaderFromBytes: fileNameForDebugOutput:string -> assemblyContents: byte[] -> options: ILReaderOptions -> ILModuleReader
@@ -94,6 +97,8 @@ type Statistics =
 
 val GetStatistics : unit -> Statistics
 
+#if !FABLE_COMPILER
+
 [<AutoOpen>]
 module Shim =
 
@@ -105,3 +110,5 @@ module Shim =
         interface IAssemblyReader
 
     val mutable AssemblyReader: IAssemblyReader
+
+#endif
