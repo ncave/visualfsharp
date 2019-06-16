@@ -102,7 +102,11 @@ type StringText(str: string) =
             | _ -> false
 
         member __.CopyTo(sourceIndex, destination, destinationIndex, count) =
+#if FABLE_COMPILER
+            Array.blit (str.ToCharArray()) sourceIndex destination destinationIndex count
+#else
             str.CopyTo(sourceIndex, destination, destinationIndex, count)
+#endif
 
 module SourceText =
 
