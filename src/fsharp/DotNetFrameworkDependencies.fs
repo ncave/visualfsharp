@@ -125,7 +125,7 @@ module internal FSharp.Compiler.DotNetFrameworkDependencies
             try
                 let refDirs = Directory.GetDirectories(appRefDir)
                 let versionPath = refDirs |> Array.sortWith (versionCompare) |> Array.last
-                Some(Path.Combine(versionPath, "ref", tfm))
+                Some(Path.Combine(versionPath, Path.Combine("ref", tfm)))
             with | _ -> None
         | _ -> None
 

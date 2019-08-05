@@ -88,7 +88,11 @@ type StringText(str: string) =
             if lastIndex <= startIndex || lastIndex >= str.Length then
                 invalidArg "target" "Too big."
 
+#if FABLE_COMPILER
+            str.IndexOf(target, startIndex) <> -1
+#else
             str.IndexOf(target, startIndex, target.Length) <> -1              
+#endif
 
         member __.Length = str.Length
 
@@ -98,7 +102,11 @@ type StringText(str: string) =
             | _ -> false
 
         member __.CopyTo(sourceIndex, destination, destinationIndex, count) =
+#if FABLE_COMPILER
+            Array.blit (str.ToCharArray()) sourceIndex destination destinationIndex count
+#else
             str.CopyTo(sourceIndex, destination, destinationIndex, count)
+#endif
 
 module SourceText =
 

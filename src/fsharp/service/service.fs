@@ -17,7 +17,9 @@ open FSharp.Compiler.AbstractIL.Internal.Library
 open FSharp.Compiler.Ast
 open FSharp.Compiler.CompileOps
 open FSharp.Compiler.CompileOptions
+#if !FABLE_COMPILER
 open FSharp.Compiler.Driver
+#endif
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Lib
 open FSharp.Compiler.Range
@@ -88,6 +90,8 @@ type FSharpProjectOptions =
     member po.ProjectDirectory = System.IO.Path.GetDirectoryName(po.ProjectFileName)
     override this.ToString() = "FSharpProjectOptions(" + this.ProjectFileName + ")"
  
+#if !FABLE_COMPILER
+
 //----------------------------------------------------------------------------
 // BackgroundCompiler
 //
@@ -1278,3 +1282,5 @@ module PrettyNaming =
 
 module FSharpFileUtilities =
     let isScriptFile (fileName: string) = CompileOps.IsScript fileName
+
+#endif //!FABLE_COMPILER

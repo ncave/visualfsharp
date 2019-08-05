@@ -52,12 +52,20 @@ module internal FSharpCheckerResultsSettings =
     /// to enable other requests to be serviced. Yielding means returning a continuation function
     /// (via an Eventually<_> value of case NotYetDone) that can be called as the next piece of work. 
     let maxTimeShareMilliseconds = 
+#if FABLE_COMPILER
+        100L
+#else
         match System.Environment.GetEnvironmentVariable("FCS_MaxTimeShare") with 
         | null | "" -> 100L
         | s -> int64 s
+#endif
 
     // Look for DLLs in the location of the service DLL first.
+#if FABLE_COMPILER
+    let defaultFSharpBinariesDir = ""
+#else
     let defaultFSharpBinariesDir = FSharpEnvironment.BinFolderOfDefaultFSharpCompiler(Some(typeof<IncrementalBuilder>.Assembly.Location)).Value
+#endif
 
 [<RequireQualifiedAccess>]
 type FSharpFindDeclFailureReason = 
@@ -517,7 +525,10 @@ type internal TypeCheckInfo
                 nameMatchesResidue n1 ||
                 meths |> List.exists (fun meth ->
                     let tcref = meth.ApparentEnclosingTyconRef
-                    tcref.IsProvided || nameMatchesResidue tcref.DisplayName)
+#if !NO_EXTENSIONTYPING
+                    tcref.IsProvided ||
+#endif
+                    nameMatchesResidue tcref.DisplayName)
             | _ -> residue = n1)
             
     /// Post-filter items to make sure they have precisely the right name
@@ -1590,6 +1601,7 @@ module internal ParseAndCheckFile =
         errHandler.CollectedDiagnostics, parseResult, errHandler.AnyErrors
 
 
+#if !FABLE_COMPILER
     let ApplyLoadClosure(tcConfig, parsedMainInput, mainInputFileName, loadClosure: LoadClosure option, tcImports: TcImports, backgroundDiagnostics) = 
 
         // If additional references were brought in by the preprocessor then we need to process them
@@ -1647,6 +1659,7 @@ module internal ParseAndCheckFile =
         | None -> 
             // For non-scripts, check for disallow #r and #load.
             ApplyMetaCommandsFromInputToTcConfig (tcConfig, parsedMainInput,Path.GetDirectoryName mainInputFileName) |> ignore
+#endif //!FABLE_COMPILER
                     
     // Type check a single file against an initial context, gleaning both errors and intellisense information.
     let CheckOneFile
@@ -1666,13 +1679,19 @@ module internal ParseAndCheckFile =
            // Used by 'FSharpDeclarationListInfo' to check the IncrementalBuilder is still alive.
            textSnapshotInfo : obj option,
            userOpName: string,
-           suggestNamesForErrors: bool) = async {
-
+           suggestNamesForErrors: bool) =
+#if !FABLE_COMPILER
+        async {
+#endif
         use _logBlock = Logger.LogBlock LogCompilerFunctionId.Service_CheckOneFile
 
         match parseResults.ParseTree with 
         // When processing the following cases, we don't need to type-check
+#if FABLE_COMPILER
+        | None -> [||], Result.Error()
+#else
         | None -> return [||], Result.Error()
+#endif
                    
         // Run the type checker...
         | Some parsedMainInput ->
@@ -1683,8 +1702,10 @@ module internal ParseAndCheckFile =
         use _unwindEL = PushErrorLoggerPhaseUntilUnwind (fun _oldLogger -> errHandler.ErrorLogger)
         use _unwindBP = PushThreadBuildPhaseUntilUnwind BuildPhase.TypeCheck
             
+#if !FABLE_COMPILER
         // Apply nowarns to tcConfig (may generate errors, so ensure errorLogger is installed)
         let tcConfig = ApplyNoWarnsToTcConfig (tcConfig, parsedMainInput,Path.GetDirectoryName mainInputFileName)
+#endif
                         
         // update the error handler with the modified tcConfig
         errHandler.ErrorSeverityOptions <- tcConfig.errorSeverityOptions
@@ -1693,8 +1714,10 @@ module internal ParseAndCheckFile =
         for (err,sev) in backgroundDiagnostics do
             diagnosticSink (err, (sev = FSharpErrorSeverity.Error))
             
+#if !FABLE_COMPILER
         // If additional references were brought in by the preprocessor then we need to process them
         ApplyLoadClosure(tcConfig, parsedMainInput, mainInputFileName, loadClosure, tcImports, backgroundDiagnostics)
+#endif
                     
         // A problem arises with nice name generation, which really should only 
         // be done in the backend, but is also done in the typechecker for better or worse. 
@@ -1703,6 +1726,23 @@ module internal ParseAndCheckFile =
                 
         // Typecheck the real input.  
         let sink = TcResultsSinkImpl(tcGlobals, sourceText = sourceText)
+
+#if FABLE_COMPILER
+        ignore userOpName
+        let resOpt =
+            try
+                let ctok = AssumeCompilationThreadWithoutEvidence()
+                let checkForErrors() = (parseResults.ParseHadErrors || errHandler.ErrorCount > 0)
+                let parsedMainInput, _moduleNamesDict = DeduplicateParsedInputModuleName moduleNamesDict parsedMainInput
+                let result =
+                    TypeCheckOneInputAndFinishEventually(checkForErrors, tcConfig, tcImports, tcGlobals, None, TcResultsSink.WithSink sink, tcState, parsedMainInput)
+                    |> Eventually.force ctok
+                Some result
+            with
+            | e ->
+                errorR e
+                Some((tcState.TcEnvFromSignatures, EmptyTopAttrs, [], [NewEmptyModuleOrNamespaceType Namespace]), tcState)
+#else //!FABLE_COMPILER
 
         let! ct = Async.CancellationToken
             
@@ -1736,6 +1776,7 @@ module internal ParseAndCheckFile =
                     errorR e
                     return Some((tcState.TcEnvFromSignatures, EmptyTopAttrs, [], [NewEmptyModuleOrNamespaceType Namespace]), tcState)
             }
+#endif //!FABLE_COMPILER
                 
         let errors = errHandler.CollectedDiagnostics
                 
@@ -1760,8 +1801,12 @@ module internal ParseAndCheckFile =
                      |> Result.Ok
             | None -> 
                 Result.Error()
+#if FABLE_COMPILER
+        errors, res
+#else
         return errors, res
         }
+#endif
 
 
 [<Sealed>] 
@@ -1812,10 +1857,12 @@ type FSharpCheckFileResults
 
     member __.HasFullTypeCheckInfo = details.IsSome
     
+#if !FABLE_COMPILER
     member info.TryGetCurrentTcImports () =
         match builderX with
         | Some builder -> builder.TryGetCurrentTcImports ()
         | _ -> None
+#endif
 
     /// Intellisense autocompletions
     member __.GetDeclarationListInfo(parseResultsOpt, line, lineStr, partialName, ?getAllEntities, ?hasTextChangedSinceLastTypecheck, ?userOpName: string) = 
@@ -2025,6 +2072,7 @@ type FSharpCheckFileResults
         let errors = FSharpCheckFileResults.JoinErrors(isIncompleteTypeCheckEnvironment, creationErrors, parseErrors, tcErrors)
         FSharpCheckFileResults (mainInputFileName, errors, Some tcFileInfo, dependencyFiles, Some builder, reactorOps, keepAssemblyContents)
 
+#if !FABLE_COMPILER
     static member CheckOneFile
         (parseResults: FSharpParseFileResults,
          sourceText: ISourceText,
@@ -2061,6 +2109,7 @@ type FSharpCheckFileResults
                 let results = FSharpCheckFileResults (mainInputFileName, errors, Some tcFileInfo, dependencyFiles, Some builder, reactorOps, keepAssemblyContents)
                 return FSharpCheckFileAnswer.Succeeded(results)
         }
+#endif
 
 and [<NoComparison>] FSharpCheckFileAnswer =
     | Aborted
@@ -2177,6 +2226,8 @@ type FSharpCheckProjectResults
 
     override __.ToString() = "FSharpCheckProjectResults(" + projectFileName + ")"
 
+#if !FABLE_COMPILER
+
 type FsiInteractiveChecker(legacyReferenceResolver, 
                            reactorOps: IReactorOperations,
                            tcConfig: TcConfig,
@@ -2238,3 +2289,4 @@ type FsiInteractiveChecker(legacyReferenceResolver,
                     failwith "unexpected aborted"
         }
 
+#endif

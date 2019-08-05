@@ -91,9 +91,47 @@ type public FSharpParsingOptions =
 
     static member internal FromTcConfigBuidler: tcConfigB: TcConfigBuilder * sourceFiles: string[] * isInteractive: bool -> FSharpParsingOptions
 
+[<Sealed>]
+type internal TypeCheckInfo =
+    internal new :
+        tcConfig: TcConfig *
+        tcGlobals: TcGlobals *
+        ccuSigForFile: ModuleOrNamespaceType *
+        thisCcu: CcuThunk *
+        tcImports: TcImports *
+        tcAccessRights: AccessorDomain *
+        projectFileName: string *
+        mainInputFileName: string *
+        sResolutions: TcResolutions *
+        sSymbolUses: TcSymbolUses *
+        sFallback: NameResolutionEnv *
+        loadClosure : LoadClosure option *
+        reactorOps : IReactorOperations *
+        textSnapshotInfo: obj option *
+        implFileOpt: TypedImplFile option *
+        openDeclarations: OpenDeclaration[]
+            -> TypeCheckInfo
+    member ScopeResolutions: TcResolutions
+    member ScopeSymbolUses: TcSymbolUses
+    member TcGlobals: TcGlobals
+    member TcImports: TcImports
+    member CcuSigForFile: Tast.ModuleOrNamespaceType
+    member ThisCcu: Tast.CcuThunk
+    member ImplementationFile: TypedImplFile option
+
 /// A handle to the results of CheckFileInProject.
 [<Sealed>]
 type public FSharpCheckFileResults =
+    internal new :
+        filename: string *
+        errors: FSharpErrorInfo[] *
+        scopeOptX: TypeCheckInfo option *
+        dependencyFiles: string[] *
+        builderX: IncrementalBuilder option *
+        reactorOpsX: IReactorOperations *
+        keepAssemblyContents: bool
+            -> FSharpCheckFileResults
+
     /// The errors returned by parsing a source file.
     member Errors : FSharpErrorInfo[]
 
@@ -107,8 +145,10 @@ type public FSharpCheckFileResults =
     /// an unrecoverable error in earlier checking/parsing/resolution steps.
     member HasFullTypeCheckInfo: bool
 
+#if !FABLE_COMPILER
     /// Tries to get the current successful TcImports. This is only used in testing. Do not use it for other stuff.
     member internal TryGetCurrentTcImports: unit -> TcImports option
+#endif
 
     /// Indicates the set of files which must be watched to accurately track changes that affect these results,
     /// Clients interested in reacting to updates to these files should watch these files and take actions as described
@@ -302,6 +342,7 @@ type public FSharpCheckFileResults =
         openDeclarations: OpenDeclaration[]
           -> FSharpCheckFileResults
 
+#if !FABLE_COMPILER
     /// Internal constructor - check a file and collect errors
     static member internal CheckOneFile: 
          parseResults: FSharpParseFileResults *
@@ -326,6 +367,7 @@ type public FSharpCheckFileResults =
          keepAssemblyContents: bool *
          suggestNamesForErrors: bool
           ->  Async<FSharpCheckFileAnswer>
+#endif
 
 /// The result of calling TypeCheckResult including the possibility of abort and background compiler not caught up.
 and [<RequireQualifiedAccess>] public FSharpCheckFileAnswer =
@@ -397,6 +439,28 @@ module internal ParseAndCheckFile =
         suggestNamesForErrors: bool
           -> (range * range)[]
 
+#if FABLE_COMPILER
+    val CheckOneFile:
+        parseResults: FSharpParseFileResults *
+        sourceText: ISourceText *
+        mainInputFileName: string *
+        projectFileName: string *
+        tcConfig: TcConfig *
+        tcGlobals: TcGlobals *
+        tcImports: TcImports *
+        tcState: TcState *
+        moduleNamesDict: ModuleNamesDict *
+        loadClosure: LoadClosure option *
+        backgroundDiagnostics: (PhasedDiagnostic * FSharpErrorSeverity)[] *
+        reactorOps: IReactorOperations *
+        textSnapshotInfo : obj option *
+        userOpName: string *
+        suggestNamesForErrors: bool
+            -> FSharpErrorInfo[] * Result<TypeCheckInfo, unit>
+#endif
+
+#if !FABLE_COMPILER
+
 // An object to typecheck source in a given typechecking environment.
 // Used internally to provide intellisense over F# Interactive.
 type internal FsiInteractiveChecker =
@@ -414,6 +478,8 @@ type internal FsiInteractiveChecker =
         sourceText:ISourceText * 
         ?userOpName: string 
           -> Async<FSharpParseFileResults * FSharpCheckFileResults * FSharpCheckProjectResults>
+
+#endif
 
 module internal FSharpCheckerResultsSettings =
     val defaultFSharpBinariesDir: string
