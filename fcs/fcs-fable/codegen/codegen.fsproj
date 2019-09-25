@@ -7,7 +7,8 @@
   <!-- <Import Project="fssrgen.targets" /> -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFramework>netcoreapp2.1</TargetFramework>
+    <RollForward>Major</RollForward>
   </PropertyGroup>
   <ItemGroup>
     <!-- <FsSrGen Include="$(FSharpSourcesRoot)\fsharp\FSComp.txt">
