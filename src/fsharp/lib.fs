@@ -16,12 +16,17 @@ let verbose = false
 let progress = ref false 
 let tracking = ref false // intended to be a general hook to control diagnostic output when tracking down bugs
 
+#if FABLE_COMPILER
+let condition _s = false
+let GetEnvInteger _e dflt = dflt
+#else
 let condition s = 
     try (System.Environment.GetEnvironmentVariable(s) <> null) with _ -> false
 
 let GetEnvInteger e dflt = match System.Environment.GetEnvironmentVariable(e) with null -> dflt | t -> try int t with _ -> dflt
 
 let dispose (x:System.IDisposable) = match x with null -> () | x -> x.Dispose()
+#endif
 
 //-------------------------------------------------------------------------
 // Library: bits
@@ -313,6 +318,7 @@ let bufs f =
     f buf 
     buf.ToString()
 
+#if !FABLE_COMPILER
 let buff (os: TextWriter) f x = 
     let buf = System.Text.StringBuilder 100 
     f buf x 
@@ -325,6 +331,7 @@ let writeViaBufferWithEnvironmentNewLines (os: TextWriter) f x =
     let text = buf.ToString()
     let text = text.Replace("\n", System.Environment.NewLine)
     os.Write text
+#endif
         
 //---------------------------------------------------------------------------
 // Imperative Graphs 
@@ -402,6 +409,7 @@ type Dumper(x:obj) =
      member self.Dump = sprintf "%A" x 
 #endif
 
+#if !FABLE_COMPILER
 //---------------------------------------------------------------------------
 // AsyncUtil
 //---------------------------------------------------------------------------
@@ -545,3 +553,5 @@ module StackGuard =
     let EnsureSufficientExecutionStack recursionDepth =
         if recursionDepth > MaxUncheckedRecursionDepth then
             RuntimeHelpers.EnsureSufficientExecutionStack ()
+
+#endif //!FABLE_COMPILER

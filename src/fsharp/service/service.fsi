@@ -11,6 +11,7 @@ open System.IO
 
 open FSharp.Compiler.AbstractIL.ILBinaryReader
 open FSharp.Compiler
+open FSharp.Compiler.AccessibilityLogic
 open FSharp.Compiler.Ast
 open FSharp.Compiler.Range
 open FSharp.Compiler.Text
@@ -64,6 +65,8 @@ type public FSharpProjectOptions =
       /// if and only if the stamps are equal
       Stamp: int64 option
     }
+
+#if !FABLE_COMPILER
 
 [<Sealed; AutoSerializable(false)>]
 /// Used to parse and check F# source code.
@@ -464,3 +467,5 @@ module public PrettyNaming =
 /// A set of helpers for dealing with F# files.
 module FSharpFileUtilities =
     val isScriptFile : string -> bool
+
+#endif //!FABLE_COMPILER

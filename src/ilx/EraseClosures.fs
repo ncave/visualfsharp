@@ -488,7 +488,7 @@ let rec convIlxClosureDef cenv encl (td: ILTypeDef) clo =
                    |> cenv.addMethodGeneratedAttrs 
 
               let cloTypeDef = 
-                ILTypeDef(name = td.Name,
+                ILTypeDef.Create(name = td.Name,
                           genericParams= td.GenericParams,
                           attributes = td.Attributes,
                           implements = [],
@@ -585,7 +585,7 @@ let rec convIlxClosureDef cenv encl (td: ILTypeDef) clo =
                             ILMemberAccess.Assembly)
                         |> cenv.addMethodGeneratedAttrs 
 
-                    ILTypeDef(name = td.Name,
+                    ILTypeDef.Create(name = td.Name,
                               genericParams= td.GenericParams,
                               attributes = td.Attributes,
                               implements = [],

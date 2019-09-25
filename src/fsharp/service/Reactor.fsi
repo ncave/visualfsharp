@@ -14,6 +14,8 @@ type internal IReactorOperations =
     /// Enqueue an operation and return immediately. 
     abstract EnqueueOp: userOpName:string * opName:string * opArg:string * action: (CompilationThreadToken -> unit) -> unit
 
+#if !FABLE_COMPILER
+
 /// Reactor is intended for long-running but interruptible operations, interleaved
 /// with one-off asynchronous operations. 
 ///
@@ -54,3 +56,4 @@ type internal Reactor =
     /// Get the reactor 
     static member Singleton : Reactor
   
+#endif //!FABLE_COMPILER

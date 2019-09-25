@@ -10,5 +10,7 @@ open Internal.Utilities.Text.Lexing
 type Lexbuf =  LexBuffer<LexBufferChar>
 val internal StringAsLexbuf: (Features.LanguageFeature -> bool) * string -> Lexbuf
 val public FunctionAsLexbuf: (Features.LanguageFeature -> bool) * (LexBufferChar[] * int * int -> int) -> Lexbuf
-val public UnicodeFileAsLexbuf: (Features.LanguageFeature -> bool) * string * int option * (*retryLocked*) bool -> Lexbuf
 val public SourceTextAsLexbuf: (Features.LanguageFeature -> bool) * ISourceText -> Lexbuf
+#if !FABLE_COMPILER
+val public UnicodeFileAsLexbuf: (Features.LanguageFeature -> bool) * string * int option * (*retryLocked*) bool -> Lexbuf
+#endif

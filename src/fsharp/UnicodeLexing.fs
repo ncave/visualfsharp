@@ -28,6 +28,8 @@ let FunctionAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, bufferF
 let SourceTextAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, sourceText) =
     LexBuffer<char>.FromSourceText(supportsFeature, sourceText)
 
+#if !FABLE_COMPILER
+
 // The choice of 60 retries times 50 ms is not arbitrary. The NTFS FILETIME structure 
 // uses 2 second resolution for LastWriteTime. We retry long enough to surpass this threshold 
 // plus 1 second. Once past the threshold the incremental builder will be able to retry asynchronously based
@@ -79,3 +81,5 @@ let UnicodeFileAsLexbuf (supportsFeature: Features.LanguageFeature -> bool, file
     let lexbuf = LexBuffer<_>.FromChars(supportsFeature, source.ToCharArray())  
 #endif
     lexbuf
+
+#endif
