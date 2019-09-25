@@ -31,7 +31,7 @@ let dotnetExePath =
     if File.Exists(pathToCli) then
         pathToCli
     else
-        DotNetCli.InstallDotNetSDK "2.2.105"
+        DotNetCli.InstallDotNetSDK "3.0.100"
 
 let runDotnet workingDir args =
     let result =
@@ -88,6 +88,10 @@ Target "Restore" (fun _ ->
 
 Target "BuildVersion" (fun _ ->
     Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" buildVersion) |> ignore
+)
+
+Target "BuildTools" (fun _ ->
+    runDotnet __SOURCE_DIRECTORY__ "build ../src/buildtools/buildtools.proj -v n -c Proto"
 )
 
 Target "Build" (fun _ ->
