@@ -714,6 +714,7 @@
     <Compile Include="$(FSharpSourcesRoot)\fsharp\fsi\fsi.fs">
       <Link>Service/fsi.fs</Link>
     </Compile>
+    <Compile Include="service_slim.fs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="FSharp.Core" Version="$(FcsFSharpCorePkgVersion)" />

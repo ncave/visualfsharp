@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="ast_print.fs"/>
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../FSharp.Compiler.Service/FSharp.Compiler.Service.fsproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" Version="4.7.1" />
+    <PackageReference Include="Fable.Core" Version="3.1.*" />
+    <PackageReference Include="Dotnet.ProjInfo" Version="*" />
+    <PackageReference Include="Fable.Import.Browser" Version="*" />
+  </ItemGroup>
+</Project>
