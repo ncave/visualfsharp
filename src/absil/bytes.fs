@@ -5,10 +5,12 @@ namespace FSharp.Compiler.AbstractIL.Internal
 
 open System
 open System.IO
+#if !FABLE_COMPILER
 open System.IO.MemoryMappedFiles
 open System.Runtime.InteropServices
 open System.Runtime.CompilerServices
 open FSharp.NativeInterop
+#endif
 
 #nowarn "9"
 
@@ -57,7 +59,11 @@ module internal Bytes =
 [<AbstractClass>]
 type ByteMemory () =
 
+#if FABLE_COMPILER
+    abstract Item: int -> byte with get
+#else
     abstract Item: int -> byte with get, set
+#endif
 
     abstract Length: int
 
@@ -71,15 +77,19 @@ type ByteMemory () =
 
     abstract Slice: pos: int * count: int -> ByteMemory
 
+#if !FABLE_COMPILER
     abstract CopyTo: Stream -> unit
+#endif
 
     abstract Copy: srcOffset: int * dest: byte[] * destOffset: int * count: int -> unit
 
     abstract ToArray: unit -> byte[]
 
+#if !FABLE_COMPILER
     abstract AsStream: unit -> Stream
 
     abstract AsReadOnlyStream: unit -> Stream
+#endif
 
 [<Sealed>]
 type ByteArrayMemory(bytes: byte[], offset, length) =
@@ -98,7 +108,9 @@ type ByteArrayMemory(bytes: byte[], offset, length) =
     
     override _.Item 
         with get i = bytes.[offset + i]
+#if !FABLE_COMPILER
         and set i v = bytes.[offset + i] <- v
+#endif
 
     override _.Length = length
 
@@ -136,9 +148,11 @@ type ByteArrayMemory(bytes: byte[], offset, length) =
         else
             ByteArrayMemory(Array.empty, 0, 0) :> ByteMemory
 
+#if !FABLE_COMPILER
     override _.CopyTo stream =
         if length > 0 then
             stream.Write(bytes, offset, length)
+#endif
 
     override _.Copy(srcOffset, dest, destOffset, count) =
         checkCount count
@@ -151,6 +165,7 @@ type ByteArrayMemory(bytes: byte[], offset, length) =
         else
             Array.empty
 
+#if !FABLE_COMPILER
     override _.AsStream() =
         if length > 0 then
             new MemoryStream(bytes, offset, length) :> Stream
@@ -162,6 +177,9 @@ type ByteArrayMemory(bytes: byte[], offset, length) =
             new MemoryStream(bytes, offset, length, false) :> Stream
         else
             new MemoryStream([||], 0, 0, false) :> Stream
+#endif
+
+#if !FABLE_COMPILER
 
 [<Sealed>]
 type SafeUnmanagedMemoryStream =
@@ -285,6 +303,8 @@ type RawByteMemory(addr: nativeptr<byte>, length: int, holder: obj) =
         else
             new MemoryStream([||], 0, 0, false) :> Stream
 
+#endif //!FABLE_COMPILER
+
 [<Struct;NoEquality;NoComparison>]
 type ReadOnlyByteMemory(bytes: ByteMemory) =
 
@@ -302,18 +322,23 @@ type ReadOnlyByteMemory(bytes: ByteMemory) =
 
     member _.Slice(pos, count) = bytes.Slice(pos, count) |> ReadOnlyByteMemory
 
+#if !FABLE_COMPILER
     member _.CopyTo stream = bytes.CopyTo stream
+#endif
 
     member _.Copy(srcOffset, dest, destOffset, count) = bytes.Copy(srcOffset, dest, destOffset, count)
 
     member _.ToArray() = bytes.ToArray()
 
+#if !FABLE_COMPILER
     member _.AsStream() = bytes.AsReadOnlyStream()
+#endif
 
 type ByteMemory with
 
     member x.AsReadOnly() = ReadOnlyByteMemory x
 
+#if !FABLE_COMPILER
     static member CreateMemoryMappedFile(bytes: ReadOnlyByteMemory) =
         if Utils.runningOnMono
         then
@@ -384,6 +409,7 @@ type ByteMemory with
 
     static member FromUnsafePointer(addr, length, holder: obj) = 
         RawByteMemory(NativePtr.ofNativeInt addr, length, holder) :> ByteMemory
+#endif //!FABLE_COMPILER
 
     static member FromArray(bytes, offset, length) =
         ByteArrayMemory(bytes, offset, length) :> ByteMemory

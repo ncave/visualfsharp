@@ -14,11 +14,13 @@ type internal HashMultiMap<'Key,'Value>(n: int, hashEq: IEqualityComparer<'Key>)
 
     let rest = Dictionary<_,_>(3,hashEq)
  
+#if !FABLE_COMPILER
     new (hashEq : IEqualityComparer<'Key>) = HashMultiMap<'Key,'Value>(11, hashEq)
 
     new (seq : seq<'Key * 'Value>, hashEq : IEqualityComparer<'Key>) as x = 
         new HashMultiMap<'Key,'Value>(11, hashEq)
         then seq |> Seq.iter (fun (k,v) -> x.Add(k,v))
+#endif
 
     member x.GetRest(k) =
         match rest.TryGetValue k with
@@ -41,7 +43,11 @@ type internal HashMultiMap<'Key,'Value>(n: int, hashEq: IEqualityComparer<'Key>)
     member x.Rest = rest
 
     member x.Copy() = 
+#if FABLE_COMPILER
+        let res = HashMultiMap<'Key,'Value>(firstEntries.Count, hashEq)
+#else
         let res = HashMultiMap<'Key,'Value>(firstEntries.Count,firstEntries.Comparer)
+#endif
         for kvp in firstEntries do 
              res.FirstEntries.Add(kvp.Key,kvp.Value)
 
@@ -116,6 +122,21 @@ type internal HashMultiMap<'Key,'Value>(n: int, hashEq: IEqualityComparer<'Key>)
 
     member x.Count = firstEntries.Count
 
+#if FABLE_COMPILER
+    interface System.Collections.IEnumerable with
+        member s.GetEnumerator() = ((s :> IEnumerable<KeyValuePair<'Key, 'Value>>).GetEnumerator() :> System.Collections.IEnumerator)
+
+    interface IEnumerable<KeyValuePair<'Key, 'Value>> with
+        member s.GetEnumerator() = 
+            let elems = seq {
+                for kvp in firstEntries do
+                    yield kvp
+                    for z in s.GetRest(kvp.Key) do
+                        yield KeyValuePair(kvp.Key, z)
+            }
+            elems.GetEnumerator()
+#else //!FABLE_COMPILER
+
     interface IEnumerable<KeyValuePair<'Key, 'Value>> with
 
         member s.GetEnumerator() = 
@@ -149,6 +170,7 @@ type internal HashMultiMap<'Key,'Value>(n: int, hashEq: IEqualityComparer<'Key>)
         member s.Remove(k:'Key) = 
             let res = s.ContainsKey(k) in 
             s.Remove(k); res
+#endif
 
     interface ICollection<KeyValuePair<'Key, 'Value>> with 
 

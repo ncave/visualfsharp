@@ -62,6 +62,10 @@ Target.create "BuildVersion" (fun _ ->
     Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" buildVersion) |> ignore
 )
 
+Target.create "BuildTools" (fun _ ->
+    runDotnet __SOURCE_DIRECTORY__ "build" "../src/buildtools/buildtools.proj -v n -c Proto"
+)
+
 Target.create "Build" (fun _ ->
     runDotnet __SOURCE_DIRECTORY__ "build" "../src/buildtools/buildtools.proj -v n -c Proto"
     let fslexPath = __SOURCE_DIRECTORY__ + "/../artifacts/bin/fslex/Proto/netcoreapp3.0/fslex.dll"
@@ -86,6 +90,30 @@ Target.create "NuGet" (fun _ ->
           MSBuildParams = { packOpts.MSBuildParams with
                               Properties = packOpts.MSBuildParams.Properties @ [ "Version", assemblyVersion ] }
       }) "FSharp.Compiler.Service.sln"
+)
+
+Target.create "CodeGen.Fable" (fun _ ->
+    let outDir = __SOURCE_DIRECTORY__ + "/fcs-fable/codegen/"
+
+    // build FCS codegen
+    let fslexPath = __SOURCE_DIRECTORY__ + "/../artifacts/bin/fslex/Proto/netcoreapp3.0/fslex.dll"
+    let fsyaccPath = __SOURCE_DIRECTORY__ + "/../artifacts/bin/fsyacc/Proto/netcoreapp3.0/fsyacc.dll"
+    runDotnet outDir "build" (sprintf "-v n /p:FsLexPath=%s /p:FsYaccPath=%s" fslexPath fsyaccPath)
+
+    // run FCS fssrgen (without .resx output, inlining it instead)
+    runDotnet outDir "run" "-- ../../../src/fsharp/FSComp.txt FSComp.fs"
+    runDotnet outDir "run" "-- ../../../src/fsharp/fsi/FSIstrings.txt FSIstrings.fs"
+
+    // Fable-specific (comment the #line directive as it is not supported)
+    ["lex.fs"; "pplex.fs"; "illex.fs"; "ilpars.fs"; "pars.fs"; "pppars.fs"]
+    |> Seq.map (fun fileName -> outDir + fileName)
+    |> Shell.regexReplaceInFilesWithEncoding @"(?<!/)# (?=\d)" "//# " Text.Encoding.UTF8
+
+    // // prevent stack overflows on large files (make lexer rules inline)
+    // let pattern = @"(?<=and )(?!inline )([a-zA-Z]+ )+ *lexbuf "
+    // ["lex.fs"; "pplex.fs"; "illex.fs"]
+    // |> Seq.map (fun fileName -> outDir + fileName)
+    // |> Shell.regexReplaceInFilesWithEncoding pattern @"inline $0" Text.Encoding.UTF8
 )
 
 Target.create "GenerateDocsEn" (fun _ ->
@@ -113,6 +141,10 @@ Target.create "GenerateDocs" ignore
 Target.create "TestAndNuGet" ignore
 
 open Fake.Core.TargetOperators
+
+"Clean"
+  ==> "BuildTools"
+  ==> "CodeGen.Fable"
 
 "Start"
   =?> ("BuildVersion", isAppVeyorBuild)

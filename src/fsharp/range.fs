@@ -157,14 +157,22 @@ type FileIndexTable() =
         | true, idx ->
             // Record the non-normalized entry if necessary
             if filePath <> normalizedFilePath then 
+#if FABLE_COMPILER
+                (
+#else
                 lock fileToIndexTable (fun () -> 
+#endif
                     fileToIndexTable.[filePath] <- idx)
                     
             // Return the index
             idx
             
         | _ -> 
+#if FABLE_COMPILER
+            (
+#else
             lock fileToIndexTable (fun () -> 
+#endif
                 // Get the new index
                 let idx = indexToFileTable.Count
                 
@@ -250,6 +258,7 @@ type range(code1:int64, code2: int64) =
 
     member r.Code2 = code2
 
+#if !FABLE_COMPILER
     member r.DebugCode =
         let name = r.FileName
         if name = unknownFileName || name = startupFileName || name = commandLineArgsFileName then name else
@@ -267,6 +276,7 @@ type range(code1:int64, code2: int64) =
               |> fun s -> s.Substring(startCol + 1, s.LastIndexOf("\n", StringComparison.Ordinal) + 1 - startCol + endCol)
         with e ->
             e.ToString()        
+#endif
 
     member r.ToShortString() = sprintf "(%d,%d--%d,%d)" r.StartLine r.StartColumn r.EndLine r.EndColumn
 
@@ -365,8 +375,11 @@ module Line =
 
     // Visual Studio uses line counts starting at 0, F# uses them starting at 1 
     let fromZ (line:Line0) = int line+1
-
+#if FABLE_COMPILER
+    let toZ (line:int) : Line0 = int (line - 1)
+#else
     let toZ (line:int) : Line0 = LanguagePrimitives.Int32WithMeasure(line - 1)
+#endif
 
 module Pos =
 

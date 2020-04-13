@@ -3,7 +3,9 @@
 /// Blobs of bytes, cross-compiling 
 namespace FSharp.Compiler.AbstractIL.Internal
 
+#if !FABLE_COMPILER
 open System.IO
+#endif
 open Internal.Utilities
 open FSharp.Compiler.AbstractIL 
 open FSharp.Compiler.AbstractIL.Internal 
@@ -42,12 +44,15 @@ type internal ByteMemory =
 
     abstract Slice: pos: int * count: int -> ByteMemory
 
+#if !FABLE_COMPILER
     abstract CopyTo: Stream -> unit
+#endif
 
     abstract Copy: srcOffset: int * dest: byte[] * destOffset: int * count: int -> unit
 
     abstract ToArray: unit -> byte[]
 
+#if !FABLE_COMPILER
     /// Get a stream representation of the backing memory.
     /// Disposing this will not free up any of the backing memory.
     abstract AsStream: unit -> Stream
@@ -56,6 +61,7 @@ type internal ByteMemory =
     /// Disposing this will not free up any of the backing memory.
     /// Stream cannot be written to.
     abstract AsReadOnlyStream: unit -> Stream
+#endif
 
 [<Struct;NoEquality;NoComparison>]
 type internal ReadOnlyByteMemory =
@@ -76,18 +82,23 @@ type internal ReadOnlyByteMemory =
 
     member Slice: pos: int * count: int -> ReadOnlyByteMemory
 
+#if !FABLE_COMPILER
     member CopyTo: Stream -> unit
+#endif
 
     member Copy: srcOffset: int * dest: byte[] * destOffset: int * count: int -> unit
 
     member ToArray: unit -> byte[]
 
+#if !FABLE_COMPILER
     member AsStream: unit -> Stream
+#endif
 
 type ByteMemory with
 
     member AsReadOnly: unit -> ReadOnlyByteMemory
 
+#if !FABLE_COMPILER
     /// Create another ByteMemory object that has a backing memory mapped file based on another ByteMemory's contents.
     static member CreateMemoryMappedFile: ReadOnlyByteMemory -> ByteMemory
 
@@ -97,6 +108,7 @@ type ByteMemory with
     /// Creates a ByteMemory object that is backed by a raw pointer.
     /// Use with care.
     static member FromUnsafePointer: addr: nativeint * length: int * holder: obj -> ByteMemory
+#endif //!FABLE_COMPILER
 
     /// Creates a ByteMemory object that is backed by a byte array with the specified offset and length.
     static member FromArray: bytes: byte[] * offset: int * length: int -> ByteMemory

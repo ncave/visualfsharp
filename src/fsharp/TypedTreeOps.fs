@@ -9040,7 +9040,11 @@ let isStaticClass (g:TcGlobals) (x: EntityRef) =
         | TProvidedTypeExtensionPoint info -> info.IsSealed && info.IsAbstract 
         | _ -> false)
 #endif
-     || (not x.IsILTycon && not x.IsProvided && HasFSharpAttribute g g.attrib_AbstractClassAttribute x.Attribs)) &&
+     || (not x.IsILTycon
+#if !NO_EXTENSIONTYPING
+        && not x.IsProvided
+#endif
+        && HasFSharpAttribute g g.attrib_AbstractClassAttribute x.Attribs)) &&
     not (HasFSharpAttribute g g.attrib_RequireQualifiedAccessAttribute x.Attribs)
 
 /// Combine a list of ModuleOrNamespaceType's making up the description of a CCU. checking there are now
