@@ -750,6 +750,7 @@
     <Compile Include="..\fsi\fsi.fs">
       <Link>InteractiveSession/fsi.fs</Link>
     </Compile>
+    <Compile Include="service_slim.fs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(FSHARPCORE_USE_PACKAGE)' != 'true'">
