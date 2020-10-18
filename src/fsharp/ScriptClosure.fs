@@ -14,7 +14,9 @@ open FSharp.Compiler.AbstractIL.Internal.Library
 open FSharp.Compiler.CompilerConfig
 open FSharp.Compiler.CompilerDiagnostics
 open FSharp.Compiler.CompilerImports
+#if !FABLE_COMPILER
 open FSharp.Compiler.DotNetFrameworkDependencies
+#endif
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Lib
 open FSharp.Compiler.ParseAndCheckInputs
@@ -23,7 +25,9 @@ open FSharp.Compiler.Range
 open FSharp.Compiler.ReferenceResolver
 open FSharp.Compiler.Text
 
+#if !FABLE_COMPILER
 open Microsoft.DotNet.DependencyManager
+#endif
 
 [<RequireQualifiedAccess>]
 type LoadClosureInput = 
@@ -71,6 +75,8 @@ type CodeContext =
     | CompilationAndEvaluation // in fsi.exe
     | Compilation  // in fsc.exe
     | Editing // in VS
+
+#if !FABLE_COMPILER
 
 module ScriptPreprocessClosure = 
     open Internal.Utilities.Text.Lexing
@@ -456,3 +462,5 @@ type LoadClosure with
 
         use unwindBuildPhase = PushThreadBuildPhaseUntilUnwind BuildPhase.Parse
         ScriptPreprocessClosure.GetFullClosureOfScriptFiles (ctok, tcConfig, files, codeContext, lexResourceManager, dependencyProvider)
+
+#endif //!FABLE_COMPILER

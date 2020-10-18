@@ -19,7 +19,19 @@ open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.TcGlobals
 open FSharp.Compiler.TypedTree
 
+#if !FABLE_COMPILER
 open Microsoft.DotNet.DependencyManager
+#endif
+
+#if FABLE_COMPILER
+// stub
+[<Class>]
+type internal IncrementalBuilder = 
+      member IncrementUsageCount : unit -> IDisposable
+      member IsAlive : bool
+      static member KeepBuilderAlive : IncrementalBuilder option -> IDisposable
+
+#else //!FABLE_COMPILER
 
 /// Lookup the global static cache for building the FrameworkTcImports
 type internal FrameworkImportsCache = 
@@ -299,3 +311,4 @@ module internal IncrementalBuild =
         /// Set the concrete inputs for this build. 
         member GetInitialPartialBuild : vectorinputs: BuildInput list -> PartialBuild
 
+#endif //!FABLE_COMPILER

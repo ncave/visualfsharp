@@ -10,14 +10,18 @@ open Internal.Utilities
 open FSharp.Compiler
 open FSharp.Compiler.AbstractIL.IL
 open FSharp.Compiler.AbstractIL.ILBinaryReader
+#if !FABLE_COMPILER
 open FSharp.Compiler.AbstractIL.ILPdbWriter
+#endif
 open FSharp.Compiler.AbstractIL.Internal
 open FSharp.Compiler.AbstractIL.Internal.Library
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Features
 open FSharp.Compiler.Range
 
+#if !FABLE_COMPILER
 open Microsoft.DotNet.DependencyManager
+#endif
 
 exception FileNameNotResolved of (*filename*) string * (*description of searched locations*) string * range
 exception LoadedSourceNotFoundIgnoring of (*filename*) string * range
@@ -228,8 +232,10 @@ type TcConfigBuilder =
       mutable maxErrors: int
       mutable abortOnError: bool
       mutable baseAddress: int32 option
+#if !FABLE_COMPILER
       mutable checksumAlgorithm: HashAlgorithm
- #if DEBUG
+#endif
+#if DEBUG
       mutable showOptimizationData: bool
 #endif
       mutable showTerms    : bool 
@@ -293,7 +299,9 @@ type TcConfigBuilder =
         tryGetMetadataSnapshot: ILReaderTryGetMetadataSnapshot
           -> TcConfigBuilder
 
+#if !FABLE_COMPILER
     member DecideNames: string list -> outfile: string * pdbfile: string option * assemblyName: string 
+#endif //!FABLE_COMPILER
 
     member TurnWarningOff: range * string -> unit
 
@@ -318,7 +326,9 @@ type TcConfigBuilder =
     // Directories to start probing in for native DLLs for FSI dynamic loading
     member GetNativeProbingRoots: unit -> seq<string>
 
+#if !FABLE_COMPILER
     member AddReferenceDirective: dependencyProvider: DependencyProvider * m: range * path: string * directive: Directive -> unit
+#endif
 
     member AddLoadedSource: m: range * originalPath: string * pathLoadedFrom: string -> unit
 
@@ -406,7 +416,9 @@ type TcConfig =
 
     member maxErrors: int
     member baseAddress: int32 option
+#if !FABLE_COMPILER
     member checksumAlgorithm: HashAlgorithm
+#endif
 #if DEBUG
     member showOptimizationData: bool
 #endif
@@ -440,6 +452,8 @@ type TcConfig =
 
     member ComputeLightSyntaxInitialStatus: string -> bool
 
+#if !FABLE_COMPILER
+
     member GetTargetFrameworkDirectories: unit -> string list
     
     /// Get the loaded sources that exist and issue a warning for the ones that don't
@@ -452,6 +466,8 @@ type TcConfig =
 
     /// File system query based on TcConfig settings
     member MakePathAbsolute: string -> string
+
+#endif //!FABLE_COMPILER
 
     member resolutionEnvironment: ReferenceResolver.ResolutionEnvironment
 
@@ -485,6 +501,8 @@ type TcConfig =
     /// if true - 'let mutable x = Span.Empty', the value 'x' is a stack referring span. Used for internal testing purposes only until we get true stack spans.
     member internalTestSpanStackReferring : bool
 
+#if !FABLE_COMPILER
+
     member GetSearchPathsForLibraryFiles: unit -> string list
 
     member IsSystemAssembly: string -> bool
@@ -513,6 +531,8 @@ type TcConfigProvider =
 val TryResolveFileUsingPaths: paths: string list * m: range * name: string -> string option
 
 val ResolveFileUsingPaths: paths: string list * m: range * name: string -> string
+
+#endif //!FABLE_COMPILER
 
 val GetWarningNumber: m: range * warningNumber: string -> int option
 

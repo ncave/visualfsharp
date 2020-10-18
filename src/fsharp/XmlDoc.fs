@@ -3,7 +3,9 @@
 module public FSharp.Compiler.XmlDoc
 
 open System
+#if !FABLE_COMPILER
 open System.Xml.Linq
+#endif
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Lib
 open FSharp.Compiler.AbstractIL.Internal.Library
@@ -54,6 +56,7 @@ type XmlDoc(unprocessedLines: string[], range: range) =
             doc.GetElaboratedXmlLines()
             |> String.concat Environment.NewLine
 
+#if !FABLE_COMPILER
     member doc.Check(paramNamesOpt: string list option) =
         try
             // We must wrap with <doc> in order to have only one root element
@@ -102,6 +105,7 @@ type XmlDoc(unprocessedLines: string[], range: range) =
 
         with e -> 
             warning (Error (FSComp.SR.xmlDocBadlyFormed(e.Message), doc.Range))
+#endif //!FABLE_COMPILER
 
 #if CREF_ELABORATION
     member doc.Elaborate (crefResolver) =
@@ -197,8 +201,10 @@ type PreXmlDoc =
                 let lines = Array.map fst preLines
                 let m = Array.reduce Range.unionRanges (Array.map snd preLines)
                 let doc = XmlDoc (lines, m)
+#if !FABLE_COMPILER
                 if check then 
                    doc.Check(paramNamesOpt)
+#endif
                 doc
 
     static member CreateFromGrabPoint(collector: XmlDocCollector, grabPointPos) =

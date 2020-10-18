@@ -624,12 +624,20 @@ type FSharpLineTokenizer(lexbuf: UnicodeLexing.Lexbuf,
     // so we need to split it into tokens that are used by VS for colorization
 
     // Stack for tokens that are split during postprocessing
+#if FABLE_COMPILER
+    let tokenStack = Internal.Utilities.Text.Parsing.Stack<_>(31)
+#else
     let mutable tokenStack = new Stack<_>()
+#endif
     let delayToken tok = tokenStack.Push tok
 
     // Process: anywhite* #<directive>
     let processDirective (str: string) directiveLength delay cont =
+#if FABLE_COMPILER
+        let hashIdx = str.IndexOf("#")
+#else
         let hashIdx = str.IndexOf("#", StringComparison.Ordinal)
+#endif
         if (hashIdx <> 0) then delay(WHITESPACE cont, 0, hashIdx - 1)
         delay(HASH_IF(range0, "", cont), hashIdx, hashIdx + directiveLength)
         hashIdx + directiveLength + 1
@@ -1535,9 +1543,14 @@ module Lexer =
         use _unwindBP = PushThreadBuildPhaseUntilUnwind BuildPhase.Parse
         use _unwindEL = PushErrorLoggerPhaseUntilUnwind (fun _ -> DiscardErrorsLogger)
 
+#if FABLE_COMPILER
+        ignore ct
+#endif
         resetLexbufPos "" lexbuf
         while not lexbuf.IsPastEndOfStream do
+#if !FABLE_COMPILER
             ct.ThrowIfCancellationRequested ()
+#endif
             onToken (getNextToken lexbuf) lexbuf.LexemeRange
 
     let lex text conditionalCompilationDefines flags supportsFeature lexCallback pathMap ct =
@@ -1553,7 +1566,11 @@ module Lexer =
             ignore filePath // can be removed at later point
             let conditionalCompilationDefines = defaultArg conditionalCompilationDefines []
             let pathMap = defaultArg pathMap Map.Empty
+#if FABLE_COMPILER
+            let ct = defaultArg ct (CancellationToken())
+#else
             let ct = defaultArg ct CancellationToken.None
+#endif
 
             let supportsFeature = (LanguageVersion langVersion).SupportsFeature
 

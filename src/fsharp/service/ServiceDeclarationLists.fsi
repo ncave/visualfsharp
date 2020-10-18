@@ -20,10 +20,12 @@ type public FSharpDeclarationListItem =
     /// Get the name for the declaration as it's presented in source code.
     member NameInCode : string
 
+#if !FABLE_COMPILER
     /// Get the description text, asynchronously.  Never returns "Loading...".
     member StructuredDescriptionTextAsync : Async<FSharpStructuredToolTipText>
 
     member DescriptionTextAsync : Async<FSharpToolTipText>
+#endif
 
     member Glyph : FSharpGlyph
 

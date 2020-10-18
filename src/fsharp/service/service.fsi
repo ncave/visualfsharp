@@ -63,6 +63,8 @@ type public FSharpProjectOptions =
       Stamp: int64 option
     }
 
+#if !FABLE_COMPILER
+
 [<Sealed; AutoSerializable(false)>]
 /// Used to parse and check F# source code.
 type public FSharpChecker =
@@ -532,3 +534,5 @@ module public PrettyNaming =
 /// A set of helpers for dealing with F# files.
 module FSharpFileUtilities =
     val isScriptFile : string -> bool
+
+#endif //!FABLE_COMPILER
