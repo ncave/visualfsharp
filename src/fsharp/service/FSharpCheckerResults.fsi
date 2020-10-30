@@ -92,8 +92,6 @@ type internal TypeCheckInfo =
         sSymbolUses: TcSymbolUses *
         sFallback: NameResolutionEnv *
         loadClosure : LoadClosure option *
-        reactorOps : IReactorOperations *
-        textSnapshotInfo: obj option *
         implFileOpt: TypedImplFile option *
         openDeclarations: OpenDeclaration[]
             -> TypeCheckInfo
@@ -114,7 +112,6 @@ type public FSharpCheckFileResults =
         scopeOptX: TypeCheckInfo option *
         dependencyFiles: string[] *
         builderX: IncrementalBuilder option *
-        reactorOpsX: IReactorOperations *
         keepAssemblyContents: bool
             -> FSharpCheckFileResults
 

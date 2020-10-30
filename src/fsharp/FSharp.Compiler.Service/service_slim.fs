@@ -45,7 +45,7 @@ open Internal.Utilities.Collections
 type internal TcResult = TcEnv * TopAttribs * TypedImplFile option * ModuleOrNamespaceType
 type internal TcErrors = FSharpErrorInfo[]
 
-type InteractiveChecker internal (tcConfig, tcGlobals, tcImports, tcInitialState, ctok, reactorOps, parseCache, checkCache) =
+type InteractiveChecker internal (tcConfig, tcGlobals, tcImports, tcInitialState, ctok, parseCache, checkCache) =
     let userOpName = "Unknown"
     let suggestNamesForErrors = true
 
@@ -72,18 +72,12 @@ type InteractiveChecker internal (tcConfig, tcGlobals, tcImports, tcInitialState
         let tcInitialEnv = GetInitialTcEnv (assemblyName, rangeStartup, tcConfig, tcImports, tcGlobals)
         let tcInitialState = GetInitialTcState (rangeStartup, assemblyName, tcConfig, tcGlobals, tcImports, niceNameGen, tcInitialEnv)
 
-        let reactorOps =
-            { new IReactorOperations with
-                member __.EnqueueAndAwaitOpAsync (userOpName, opName, opArg, op) =
-                    async.Return (Cancellable.runWithoutCancellation (op ctok))
-                member __.EnqueueOp (userOpName, opName, opArg, op) = (op ctok) }
-
         // parse cache, keyed on file name and source hash
         let parseCache = ConcurrentDictionary<string * int, FSharpParseFileResults>(HashIdentity.Structural)
         // type check cache, keyed on file name
         let checkCache = ConcurrentDictionary<string, (TcResult * TcErrors) * (TcState * ModuleNamesDict)>(HashIdentity.Structural)
 
-        InteractiveChecker (tcConfig, tcGlobals, tcImports, tcInitialState, ctok, reactorOps, parseCache, checkCache)
+        InteractiveChecker (tcConfig, tcGlobals, tcImports, tcInitialState, ctok, parseCache, checkCache)
 
     member private x.MakeProjectResults (projectFileName: string, parseResults: FSharpParseFileResults[], tcState: TcState, errors: FSharpErrorInfo[],
                                          symbolUses: TcSymbolUses list, topAttrsOpt: TopAttribs option, tcImplFilesOpt: TypedImplFile list option) =
@@ -148,7 +142,6 @@ type InteractiveChecker internal (tcConfig, tcGlobals, tcImports, tcInitialState
             checkCache.[fileName] <- ((tcResult, tcErrors), (tcState, moduleNamesDict))
 
             let loadClosure = None
-            let textSnapshotInfo = None
             let keepAssemblyContents = true
 
             let tcEnvAtEnd, _topAttrs, implFile, ccuSigForFile = tcResult
@@ -156,8 +149,8 @@ type InteractiveChecker internal (tcConfig, tcGlobals, tcImports, tcInitialState
 
             let scope = TypeCheckInfo (tcConfig, tcGlobals, ccuSigForFile, tcState.Ccu, tcImports, tcEnvAtEnd.AccessRights,
                                     projectFileName, fileName, sink.GetResolutions(), sink.GetSymbolUses(), tcEnvAtEnd.NameEnv,
-                                    loadClosure, reactorOps, textSnapshotInfo, implFile, sink.GetOpenDeclarations())
-            FSharpCheckFileResults (fileName, errors, Some scope, parseResults.DependencyFiles, None, reactorOps, keepAssemblyContents)
+                                    loadClosure, implFile, sink.GetOpenDeclarations())
+            FSharpCheckFileResults (fileName, errors, Some scope, parseResults.DependencyFiles, None, keepAssemblyContents)
             |> Some
         | None ->
             None
