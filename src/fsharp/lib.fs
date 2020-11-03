@@ -16,12 +16,17 @@ let verbose = false
 let mutable progress = false 
 let mutable tracking = false // intended to be a general hook to control diagnostic output when tracking down bugs
 
+#if FABLE_COMPILER
+let condition _s = false
+let GetEnvInteger _e dflt = dflt
+#else
 let condition s = 
     try (System.Environment.GetEnvironmentVariable(s) <> null) with _ -> false
 
 let GetEnvInteger e dflt = match System.Environment.GetEnvironmentVariable(e) with null -> dflt | t -> try int t with _ -> dflt
 
 let dispose (x:System.IDisposable) = match x with null -> () | x -> x.Dispose()
+#endif
 
 //-------------------------------------------------------------------------
 // Library: bits
@@ -308,11 +313,13 @@ let bufs f =
     f buf 
     buf.ToString()
 
+#if !FABLE_COMPILER
 // writing to output stream via a string buffer.
 let writeViaBuffer (os: TextWriter) f x = 
     let buf = System.Text.StringBuilder 100 
     f buf x 
     os.Write(buf.ToString())
+#endif
 
 //---------------------------------------------------------------------------
 // Imperative Graphs 
@@ -405,6 +412,7 @@ type Dumper(x:obj) =
      member self.Dump = sprintf "%A" x 
 #endif
 
+#if !FABLE_COMPILER
 //---------------------------------------------------------------------------
 // AsyncUtil
 //---------------------------------------------------------------------------
@@ -548,6 +556,8 @@ module StackGuard =
     let EnsureSufficientExecutionStack recursionDepth =
         if recursionDepth > MaxUncheckedRecursionDepth then
             RuntimeHelpers.EnsureSufficientExecutionStack ()
+
+#endif //!FABLE_COMPILER
 
 [<RequireQualifiedAccess>] 
 type MaybeLazy<'T> =

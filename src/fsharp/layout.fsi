@@ -79,7 +79,9 @@ val listL                 : ('a -> Layout) -> 'a list   -> Layout
 
 val showL                 : Layout -> string
 
+#if !FABLE_COMPILER
 val outL                  : TextWriter -> Layout -> unit
+#endif
 
 val bufferL               : StringBuilder -> Layout -> unit
 
@@ -221,8 +223,10 @@ val renderL  : LayoutRenderer<'b,'a> -> Layout -> 'b
 /// Render layout to string 
 val stringR  : LayoutRenderer<string,string list>
 
+#if !FABLE_COMPILER
 /// Render layout to channel
 val channelR : TextWriter -> LayoutRenderer<NoResult,NoState>
+#endif
 
 /// Render layout to StringBuilder
 val bufferR  : StringBuilder -> LayoutRenderer<NoResult,NoState>

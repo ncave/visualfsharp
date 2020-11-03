@@ -12,7 +12,9 @@ open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Range
 open FSharp.Compiler.SyntaxTree
 open FSharp.Compiler.Text
+#if !FABLE_COMPILER
 open Microsoft.DotNet.DependencyManager
+#endif
 
 [<RequireQualifiedAccess>]
 type CodeContext =
@@ -59,6 +61,8 @@ type LoadClosure =
       /// Diagnostics seen while processing the compiler options implied root of closure
       LoadClosureRootFileDiagnostics: (PhasedDiagnostic * bool) list }   
 
+#if !FABLE_COMPILER
+
     /// Analyze a script text and find the closure of its references. 
     /// Used from FCS, when editing a script file.  
     //
@@ -93,3 +97,4 @@ type LoadClosure =
         dependencyProvider: DependencyProvider
             -> LoadClosure
 
+#endif //!FABLE_COMPILER

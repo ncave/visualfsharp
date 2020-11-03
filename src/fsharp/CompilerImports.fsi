@@ -22,7 +22,9 @@ open FSharp.Core.CompilerServices
 open FSharp.Compiler.ExtensionTyping
 #endif
 
+#if !FABLE_COMPILER
 open Microsoft.DotNet.DependencyManager
+#endif //!FABLE_COMPILER
 
 /// This exception is an old-style way of reporting a diagnostic
 exception AssemblyNotResolved of (*originalName*) string * range
@@ -42,12 +44,17 @@ val IsOptimizationDataResource: ILResource -> bool
 /// Determine if an IL resource attached to an F# assembly is an F# quotation data resource for reflected definitions
 val IsReflectedDefinitionsResource: ILResource -> bool
 val GetSignatureDataResourceName: ILResource -> string
+val GetOptimizationDataResourceName: ILResource -> string
+
+#if !FABLE_COMPILER
 
 /// Write F# signature data as an IL resource
 val WriteSignatureData: TcConfig * TcGlobals * Remap * CcuThunk * filename: string * inMem: bool -> ILResource
 
 /// Write F# optimization data as an IL resource
 val WriteOptimizationData: TcGlobals * filename: string * inMem: bool * CcuThunk * Optimizer.LazyModuleInfo -> ILResource
+
+#endif //!FABLE_COMPILER
 
 [<RequireQualifiedAccess>]
 type ResolveAssemblyReferenceMode =
@@ -102,6 +109,21 @@ type ImportedAssembly =
       FSharpOptimizationData: Lazy<Option<Optimizer.LazyModuleInfo>>
     }
 
+
+#if FABLE_COMPILER
+
+/// trimmed-down version of TcImports
+[<Sealed>] 
+type TcImports =
+    internal new: unit -> TcImports
+    member FindCcu: range * string -> CcuThunk option
+    member SetTcGlobals: TcGlobals -> unit
+    member GetTcGlobals: unit -> TcGlobals
+    member SetCcuMap: Map<string, ImportedAssembly> -> unit
+    member GetImportedAssemblies: unit -> ImportedAssembly list
+    member GetImportMap: unit -> Import.ImportMap
+
+#else //!FABLE_COMPILER
 
 [<Sealed>] 
 /// Tables of assembly resolutions
@@ -198,3 +220,5 @@ val RequireDLL: ctok: CompilationThreadToken * tcImports: TcImports * tcEnv: TcE
 
 /// This list is the default set of references for "non-project" files. 
 val DefaultReferencesForScriptsAndOutOfProjectSources: bool -> string list
+
+#endif //!FABLE_COMPILER

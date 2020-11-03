@@ -428,7 +428,11 @@ type TokenTupPool() =
     let maxSize = 100
 
     let mutable currentPoolSize = 0
+#if FABLE_COMPILER
+    let stack = Internal.Utilities.Text.Parsing.Stack<_>(maxSize)
+#else
     let stack = System.Collections.Generic.Stack(10)
+#endif
 
     member this.Rent() = 
         if stack.Count = 0 then
@@ -614,7 +618,11 @@ type LexFilterImpl (lightStatus: LightSyntaxStatus, compilingFsLib, lexer, lexbu
     // Fetch a raw token, either from the old lexer or from our delayedStack
     //--------------------------------------------------------------------------
 
+#if FABLE_COMPILER
+    let delayedStack = Internal.Utilities.Text.Parsing.Stack<TokenTup>(100)
+#else
     let delayedStack = System.Collections.Generic.Stack<TokenTup>()
+#endif
     let mutable tokensThatNeedNoProcessingCount = 0
 
     let delayToken tokenTup = delayedStack.Push tokenTup 
@@ -2373,7 +2381,11 @@ type LexFilter (lightStatus: LightSyntaxStatus, compilingFsLib, lexer, lexbuf: U
 
     // We don't interact with lexbuf state at all, any inserted tokens have same state/location as the real one read, so
     // we don't have to do any of the wrapped lexbuf magic that you see in LexFilterImpl.
+#if FABLE_COMPILER
+    let delayedStack = Internal.Utilities.Text.Parsing.Stack<token>(100)
+#else
     let delayedStack = System.Collections.Generic.Stack<token>()
+#endif
     let delayToken tok = delayedStack.Push tok 
 
     let popNextToken() = 

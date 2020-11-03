@@ -126,6 +126,7 @@ type public Entity =
       LastIdent: string
     }
 
+#if !FABLE_COMPILER
 /// Provides assembly content.
 module public AssemblyContentProvider =
 
@@ -139,6 +140,7 @@ module public AssemblyContentProvider =
           -> fileName: string option 
           -> assemblies: FSharpAssembly list 
           -> AssemblySymbol list
+#endif
 
 /// Kind of lexical scope.
 type public ScopeKind =

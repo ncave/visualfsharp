@@ -3,8 +3,10 @@
 /// Blobs of bytes, cross-compiling 
 namespace FSharp.Compiler.AbstractIL.Internal
 
+#if !FABLE_COMPILER
 open System.IO
 open System.IO.MemoryMappedFiles
+#endif
 open Internal.Utilities
 open FSharp.Compiler.AbstractIL 
 open FSharp.Compiler.AbstractIL.Internal 
@@ -44,12 +46,15 @@ type internal ByteMemory =
 
     abstract Slice: pos: int * count: int -> ByteMemory
 
+#if !FABLE_COMPILER
     abstract CopyTo: Stream -> unit
+#endif
 
     abstract Copy: srcOffset: int * dest: byte[] * destOffset: int * count: int -> unit
 
     abstract ToArray: unit -> byte[]
 
+#if !FABLE_COMPILER
     /// Get a stream representation of the backing memory.
     /// Disposing this will not free up any of the backing memory.
     abstract AsStream: unit -> Stream
@@ -58,6 +63,7 @@ type internal ByteMemory =
     /// Disposing this will not free up any of the backing memory.
     /// Stream cannot be written to.
     abstract AsReadOnlyStream: unit -> Stream
+#endif
 
 [<Struct;NoEquality;NoComparison>]
 type internal ReadOnlyByteMemory =
@@ -78,12 +84,15 @@ type internal ReadOnlyByteMemory =
 
     member Slice: pos: int * count: int -> ReadOnlyByteMemory
 
+#if !FABLE_COMPILER
     member CopyTo: Stream -> unit
+#endif
 
     member Copy: srcOffset: int * dest: byte[] * destOffset: int * count: int -> unit
 
     member ToArray: unit -> byte[]
 
+#if !FABLE_COMPILER
     member AsStream: unit -> Stream
 
 [<AutoOpen>]
@@ -94,11 +103,13 @@ module internal MemoryMappedFileExtensions =
         /// Create a memory mapped file based on the given ByteMemory's contents.
         /// If the given ByteMemory's length is zero or a memory mapped file is not supported, the result will be None.
         static member TryFromByteMemory : bytes: ReadOnlyByteMemory -> MemoryMappedFile option
+#endif
 
 type internal ByteMemory with
 
     member AsReadOnly: unit -> ReadOnlyByteMemory
 
+#if !FABLE_COMPILER
     /// Empty byte memory.
     static member Empty: ByteMemory
 
@@ -111,6 +122,7 @@ type internal ByteMemory with
     /// Creates a ByteMemory object that is backed by a raw pointer.
     /// Use with care.
     static member FromUnsafePointer: addr: nativeint * length: int * holder: obj -> ByteMemory
+#endif //!FABLE_COMPILER
 
     /// Creates a ByteMemory object that is backed by a byte array with the specified offset and length.
     static member FromArray: bytes: byte[] * offset: int * length: int -> ByteMemory
@@ -150,6 +162,8 @@ type internal ByteStream =
     member Skip : int -> unit
 #endif
 
+#if !FABLE_COMPILER
+
 [<Sealed>]
 type internal ByteStorage =
 
@@ -166,3 +180,5 @@ type internal ByteStorage =
 
     /// Creates a ByteStorage that has a copy of the given byte array.
     static member FromByteArrayAndCopy : byte [] * useBackingMemoryMappedFile: bool -> ByteStorage
+
+#endif //!FABLE_COMPILER

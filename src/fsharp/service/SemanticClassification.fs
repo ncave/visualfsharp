@@ -148,7 +148,11 @@ module TcResolutionsExtensions =
 
                 let duplicates = HashSet<range>(Range.comparer)
 
+#if FABLE_COMPILER
+                let results = ResizeArray<_>()
+#else
                 let results = ImmutableArray.CreateBuilder()
+#endif
                 let inline add m typ =
                     if duplicates.Add m then
                         results.Add struct(m, typ)

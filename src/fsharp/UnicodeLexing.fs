@@ -24,6 +24,7 @@ let FunctionAsLexbuf (supportsFeature, bufferFiller) =
 let SourceTextAsLexbuf (supportsFeature, sourceText) =
     LexBuffer<LexBufferChar>.FromSourceText(supportsFeature, sourceText)
 
+#if !FABLE_COMPILER
 let StreamReaderAsLexbuf (supportsFeature, reader: StreamReader) =
     let mutable isFinished = false
     FunctionAsLexbuf (supportsFeature, fun (chars, start, length) ->
@@ -36,3 +37,4 @@ let StreamReaderAsLexbuf (supportsFeature, reader: StreamReader) =
             else
                 nBytesRead
     )
+#endif

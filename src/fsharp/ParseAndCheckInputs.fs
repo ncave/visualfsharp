@@ -20,7 +20,9 @@ open FSharp.Compiler.CompilerGlobalState
 open FSharp.Compiler.CompilerConfig
 open FSharp.Compiler.CompilerDiagnostics
 open FSharp.Compiler.CompilerImports
+#if !FABLE_COMPILER
 open FSharp.Compiler.DotNetFrameworkDependencies
+#endif
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Lexhelp
 open FSharp.Compiler.Lib
@@ -299,7 +301,11 @@ let ParseOneInputLexbuf (tcConfig: TcConfig, lexResourceManager, conditionalComp
                         printf "tokenize - getting one token from %s\n" shortFilename
                         let t = tokenizer.Lexer lexbuf
                         printf "tokenize - got %s @ %a\n" (Parser.token_to_string t) outputRange lexbuf.LexemeRange
+#if FABLE_COMPILER
+                        (match t with Parser.EOF _ -> () | _ -> ())
+#else
                         (match t with Parser.EOF _ -> exit 0 | _ -> ())
+#endif
                         if lexbuf.IsPastEndOfStream then printf "!!! at end of stream\n"
 
                 if tcConfig.testInteractionParser then 
@@ -307,7 +313,11 @@ let ParseOneInputLexbuf (tcConfig: TcConfig, lexResourceManager, conditionalComp
                         match (Parser.interaction tokenizer.Lexer lexbuf) with
                         | IDefns(l, m) -> dprintf "Parsed OK, got %d defs @ %a\n" l.Length outputRange m
                         | IHash (_, m) -> dprintf "Parsed OK, got hash @ %a\n" outputRange m
+#if FABLE_COMPILER
+                    ()
+#else
                     exit 0
+#endif
 
                 let res = ParseInput(tokenizer.Lexer, errorLogger, lexbuf, None, filename, isLastCompiland)
 
@@ -330,6 +340,7 @@ let ParseOneInputLexbuf (tcConfig: TcConfig, lexResourceManager, conditionalComp
         Some input 
     with e -> (* errorR(Failure("parse failed")); *) errorRecovery e rangeStartup; None 
 
+#if !FABLE_COMPILER
             
 let ParseOneInputFile (tcConfig: TcConfig, lexResourceManager, conditionalCompilationDefines, filename, isLastCompiland, errorLogger, retryLocked) =
     try 
@@ -494,6 +505,8 @@ let ApplyMetaCommandsFromInputToTcConfig (tcConfig: TcConfig, inp: ParsedInput, 
         (tcConfigB, inp, pathOfMetaCommandSource, ())
     TcConfig.Create(tcConfigB, validate=false)
 
+#endif //!FABLE_COMPILER
+
 /// Build the initial type checking environment
 let GetInitialTcEnv (assemblyName: string, initm: range, tcConfig: TcConfig, tcImports: TcImports, tcGlobals) =    
     let initm = initm.StartRange
@@ -511,6 +524,8 @@ let GetInitialTcEnv (assemblyName: string, initm: range, tcConfig: TcConfig, tcI
         with e -> errorRecovery e initm; tcEnv
     else
         tcEnv
+
+#if !FABLE_COMPILER
 
 /// Inject faults into checking
 let CheckSimulateException(tcConfig: TcConfig) = 
@@ -535,6 +550,8 @@ let CheckSimulateException(tcConfig: TcConfig) =
     | Some("tc-oc") -> raise(System.OperationCanceledException())
     | Some("tc-fail") -> failwith "simulated"
     | _ -> ()
+
+#endif //!FABLE_COMPILER
 
 //----------------------------------------------------------------------------
 // Type-check sets of files
@@ -629,7 +646,9 @@ let TypeCheckOneInputEventually (checkForErrors, tcConfig: TcConfig, tcImports: 
           let! ctok = Eventually.token
           RequireCompilationThread ctok // Everything here requires the compilation thread since it works on the TAST
 
+#if !FABLE_COMPILER
           CheckSimulateException tcConfig
+#endif
 
           let m = inp.Range
           let amap = tcImports.GetImportMap()

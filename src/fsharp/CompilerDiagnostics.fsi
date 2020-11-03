@@ -55,6 +55,8 @@ val SplitRelatedDiagnostics: PhasedDiagnostic -> PhasedDiagnostic * PhasedDiagno
 /// Output an error to a buffer
 val OutputPhasedDiagnostic: StringBuilder -> PhasedDiagnostic -> flattenErrors: bool -> suggestNames: bool -> unit
 
+#if !FABLE_COMPILER
+
 /// Output an error or warning to a buffer
 val OutputDiagnostic: implicitIncludeDir:string * showFullPaths: bool * flattenErrors: bool * errorStyle: ErrorStyle *  isError:bool -> StringBuilder -> PhasedDiagnostic -> unit
 
@@ -91,6 +93,8 @@ type Diagnostic =
 
 /// Part of LegacyHostedCompilerForTesting
 val CollectDiagnostic: implicitIncludeDir:string * showFullPaths: bool * flattenErrors: bool * errorStyle: ErrorStyle *  isError:bool * PhasedDiagnostic * suggestNames: bool -> seq<Diagnostic>
+
+#endif //!FABLE_COMPILER
 
 /// Get an error logger that filters the reporting of warnings based on scoped pragma information
 val GetErrorLoggerFilteringByScopedPragmas: checkFile:bool * ScopedPragma list * ErrorLogger  -> ErrorLogger

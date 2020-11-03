@@ -204,9 +204,11 @@ let GetRangeOfDiagnostic(err: PhasedDiagnostic) =
       | HashLoadedSourceHasIssues(_, _, m) 
       | HashLoadedScriptConsideredSource m -> 
           Some m
+#if !FABLE_COMPILER
       // Strip TargetInvocationException wrappers
       | :? System.Reflection.TargetInvocationException as e -> 
           RangeFromException e.InnerException
+#endif
 #if !NO_EXTENSIONTYPING
       | :? TypeProviderError as e -> e.Range |> Some
 #endif
@@ -332,9 +334,11 @@ let GetDiagnosticNumber(err: PhasedDiagnostic) =
       | PatternMatchCompilation.EnumMatchIncomplete _ -> 104
        (* DO NOT CHANGE THE NUMBERS *)
 
+#if !FABLE_COMPILER
       // Strip TargetInvocationException wrappers
       | :? System.Reflection.TargetInvocationException as e -> 
           GetFromException e.InnerException
+#endif
       
       | WrappedError(e, _) -> GetFromException e   
 
@@ -400,9 +404,11 @@ let SplitRelatedDiagnostics(err: PhasedDiagnostic) : PhasedDiagnostic * PhasedDi
       | WrappedError (e, m) -> 
           let e, related = SplitRelatedException e
           WrappedError(e.Exception, m)|>ToPhased, related
+#if !FABLE_COMPILER
       // Strip TargetInvocationException wrappers
       | :? System.Reflection.TargetInvocationException as e -> 
           SplitRelatedException e.InnerException
+#endif
       | e -> 
            ToPhased e, []
     SplitRelatedException err.Exception
@@ -410,7 +416,9 @@ let SplitRelatedDiagnostics(err: PhasedDiagnostic) : PhasedDiagnostic * PhasedDi
 
 let DeclareMessage = FSharp.Compiler.DiagnosticMessage.DeclareResourceString
 
+#if !FABLE_COMPILER
 do FSComp.SR.RunStartupValidation()
+#endif
 let SeeAlsoE() = DeclareResourceString("SeeAlso", "%s")
 let ConstraintSolverTupleDiffLengthsE() = DeclareResourceString("ConstraintSolverTupleDiffLengths", "%d%d")
 let ConstraintSolverInfiniteTypesE() = DeclareResourceString("ConstraintSolverInfiniteTypes", "%s%s")
@@ -572,6 +580,19 @@ let TargetInvocationExceptionWrapperE() = DeclareResourceString("TargetInvocatio
 let getErrorString key = SR.GetString key
 
 let (|InvalidArgument|_|) (exn: exn) = match exn with :? ArgumentException as e -> Some e.Message | _ -> None
+
+#if FABLE_COMPILER
+type StringBuilder() =
+    let buf = System.Text.StringBuilder()
+    member x.Append(s: string) = buf.Append(s) |> ignore; x
+    member x.AppendLine() = x.Append("\n")
+    override x.ToString() = buf.ToString()
+
+module Printf =
+    let bprintf (sb: StringBuilder) =
+        let f (s: string) = sb.Append(s) |> ignore
+        Printf.kprintf f
+#endif
 
 let OutputPhasedErrorR (os: StringBuilder) (err: PhasedDiagnostic) (canSuggestNames: bool) =
 
@@ -1154,7 +1175,7 @@ let OutputPhasedErrorR (os: StringBuilder) (err: PhasedDiagnostic) (canSuggestNa
           | Some token -> 
               match (token |> Parser.tagOfToken |> Parser.tokenTagToTokenId), token with 
               | EndOfStructuredConstructToken, _ -> os.Append(OBlockEndSentenceE().Format) |> ignore
-              | Parser.TOKEN_LEX_FAILURE, Parser.LEX_FAILURE str -> Printf.bprintf os "%s" str (* Fix bug://2431 *)
+              | Parser.TOKEN_LEX_FAILURE, Parser.LEX_FAILURE str -> Printf.bprintf os "%s" str //(* Fix bug://2431 *)
               | token, _ -> os.Append(UnexpectedE().Format (token |> tokenIdToText)) |> ignore
 
               (* Search for a state producing a single recognized non-terminal in the states on the stack *)
@@ -1396,7 +1417,7 @@ let OutputPhasedErrorR (os: StringBuilder) (err: PhasedDiagnostic) (canSuggestNa
           os.Append(LetRecUnsound1E().Format v.DisplayName) |> ignore
 
       | LetRecUnsound (_, path, _) -> 
-          let bos = new System.Text.StringBuilder()
+          let bos = new StringBuilder()
           (path.Tail @ [path.Head]) |> List.iter (fun (v: ValRef) -> bos.Append(LetRecUnsoundInnerE().Format v.DisplayName) |> ignore) 
           os.Append(LetRecUnsound2E().Format (List.head path).DisplayName (bos.ToString())) |> ignore
 
@@ -1618,6 +1639,7 @@ let OutputPhasedErrorR (os: StringBuilder) (err: PhasedDiagnostic) (canSuggestNa
       | MSBuildReferenceResolutionError(code, message, _) -> 
           os.Append(MSBuildReferenceResolutionErrorE().Format message code) |> ignore
 
+#if !FABLE_COMPILER
       // Strip TargetInvocationException wrappers
       | :? System.Reflection.TargetInvocationException as e -> 
           OutputExceptionR os e.InnerException
@@ -1633,7 +1655,7 @@ let OutputPhasedErrorR (os: StringBuilder) (err: PhasedDiagnostic) (canSuggestNa
       | :? IOException as e -> Printf.bprintf os "%s" e.Message
 
       | :? System.UnauthorizedAccessException as e -> Printf.bprintf os "%s" e.Message
-
+#endif //!FABLE_COMPILER
       | e -> 
           os.Append(TargetInvocationExceptionWrapperE().Format e.Message) |> ignore
 #if DEBUG
@@ -1647,7 +1669,7 @@ let OutputPhasedErrorR (os: StringBuilder) (err: PhasedDiagnostic) (canSuggestNa
 
 // remove any newlines and tabs
 let OutputPhasedDiagnostic (os: System.Text.StringBuilder) (err: PhasedDiagnostic) (flattenErrors: bool) (suggestNames: bool) =
-    let buf = new System.Text.StringBuilder()
+    let buf = new StringBuilder()
 
     OutputPhasedErrorR buf err suggestNames
     let s = if flattenErrors then ErrorLogger.NormalizeErrorString (buf.ToString()) else buf.ToString()
@@ -1673,6 +1695,8 @@ let SanitizeFileName fileName implicitIncludeDir =
             fullPath.Replace(currentDir+"\\", "")
     with _ ->
         fileName
+
+#if !FABLE_COMPILER
 
 [<RequireQualifiedAccess>]
 type DiagnosticLocation =
@@ -1771,7 +1795,7 @@ let CollectDiagnostic (implicitIncludeDir, showFullPaths, flattenErrors, errorSt
             let where = OutputWhere mainError
             let canonical = OutputCanonicalInformation(err.Subcategory(), GetDiagnosticNumber mainError)
             let message = 
-                let os = System.Text.StringBuilder()
+                let os = StringBuilder()
                 OutputPhasedDiagnostic os mainError flattenErrors suggestNames
                 os.ToString()
             
@@ -1786,7 +1810,7 @@ let CollectDiagnostic (implicitIncludeDir, showFullPaths, flattenErrors, errorSt
                     let relWhere = OutputWhere mainError // mainError?
                     let relCanonical = OutputCanonicalInformation(err.Subcategory(), GetDiagnosticNumber mainError) // Use main error for code
                     let relMessage = 
-                        let os = System.Text.StringBuilder()
+                        let os = StringBuilder()
                         OutputPhasedDiagnostic os err flattenErrors suggestNames
                         os.ToString()
 
@@ -1794,7 +1818,7 @@ let CollectDiagnostic (implicitIncludeDir, showFullPaths, flattenErrors, errorSt
                     errors.Add( Diagnostic.Long (isError, entry) )
 
                 | _ -> 
-                    let os = System.Text.StringBuilder()
+                    let os = StringBuilder()
                     OutputPhasedDiagnostic os err flattenErrors suggestNames
                     errors.Add( Diagnostic.Short(isError, os.ToString()) )
 
@@ -1844,6 +1868,8 @@ let OutputDiagnosticContext prefix fileLineFunction os err =
             let iLen = if lineA = lineB then max (iB - iA) 1 else 1
             Printf.bprintf os "%s%s\n" prefix line
             Printf.bprintf os "%s%s%s\n" prefix (String.make iA '-') (String.make iLen '^')
+
+#endif //!FABLE_COMPILER
 
 let ReportWarning options err = 
     warningOn err (options.WarnLevel) (options.WarnOn) && not (List.contains (GetDiagnosticNumber err) (options.WarnOff))
