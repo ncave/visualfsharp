@@ -1890,11 +1890,11 @@ type ModuleOrNamespaceType(kind: ModuleOrNamespaceKind, vals: QueueList<Val>, en
           
     /// Return a new module or namespace type with an entity added.
     member _.AddEntity(tycon: Tycon) = 
-        ModuleOrNamespaceType(kind, vals, entities.AppendOne tycon)
+        ModuleOrNamespaceType(kind, vals, QueueList.appendOne entities tycon)
           
     /// Return a new module or namespace type with a value added.
     member _.AddVal(vspec: Val) = 
-        ModuleOrNamespaceType(kind, vals.AppendOne vspec, entities)
+        ModuleOrNamespaceType(kind, QueueList.appendOne vals vspec, entities)
           
     /// Get a table of the active patterns defined in this module.
     member _.ActivePatternElemRefLookupTable = activePatternElemRefCache

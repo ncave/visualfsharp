@@ -5,6 +5,26 @@ namespace Internal.Utilities
 open System.Collections
 open System.Collections.Generic
 
+// #if FABLE_COMPILER
+
+// type internal QueueList<'T> = 'T list
+
+// [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+// module internal QueueList =
+//     let empty = List.empty
+//     let inline iter f xs  = List.iter f xs // = List.iter f (List.rev xs), if order matters
+//     let inline map f xs = List.map f xs
+//     let inline exists f xs = List.exists f xs
+//     let inline filter f xs = List.filter f xs
+//     let inline foldBack f xs acc = List.fold (fun acc x -> f x acc) acc xs
+//     let inline ofList xs = xs // = List.rev, if order matters
+//     let inline toList xs = xs // = List.rev, if order matters
+//     let inline tryFind f xs = List.tryFind f xs // = tryFindBack, if order matters
+//     let inline appendOne xs x = x::xs
+//     let inline append xs ys = List.fold (fun acc x -> x::acc) xs ys
+
+// #else //!FABLE_COMPILER
+
 /// Iterable functional collection with O(1) append-1 time. Useful for data structures where elements get added at the
 /// end but the collection must occasionally be iterated. Iteration is slower and may allocate because 
 /// a suffix of elements is stored in reverse order.
@@ -69,7 +89,8 @@ module internal Test =
 
     for i = 0 to 100 do 
         if q |> QueueList.toList <> [0..i-1] then printfn "fail pre check, i = %d" i
-        q <- q.AppendOne(i)
+        q <- QueueList.appendOne q i
         if q |> QueueList.toList <> [0..i] then printfn "fail post check, i = %d" i *)
 #endif
 
+// #endif //!FABLE_COMPILER
