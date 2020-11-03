@@ -22,6 +22,7 @@
     <Compile Include="System.fs" />
     <Compile Include="System.Collections.fs" />
     <Compile Include="System.IO.fs" />
+    <Compile Include="Identity.fs" />
     <!-- string resources -->
     <Compile Include="FSStrings.fs" />
     <Compile Include="SR.fs" />

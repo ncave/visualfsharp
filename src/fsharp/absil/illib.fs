@@ -707,6 +707,30 @@ module ResultOrException =
         | Result x -> success x
         | Exception _err -> f()
 
+#if FABLE_COMPILER
+
+open IdentityMonad
+
+type Cancellable<'T> = M<'T>
+let cancellable = identity
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Cancellable =
+    let fold = Identity.fold
+    let token = CompilationThreadToken() |> Identity.ret
+    let runWithoutCancellation comp = Identity.run comp
+
+type Eventually<'T> = M<'T>
+let eventually = identity
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Eventually =
+    let fold = Identity.fold
+    let token = CompilationThreadToken() |> Identity.ret
+    let force (_ctok: CompilationThreadToken) e = Identity.run e
+
+#else // !FABLE_COMPILER
+
 [<RequireQualifiedAccess>] 
 type ValueOrCancelled<'TResult> =
     | Value of 'TResult
@@ -983,6 +1007,8 @@ let _ = eventually { let! x = eventually { return 1 } in return 1 }
 let _ = eventually { try return (failwith "") with _ -> return 1 }
 let _ = eventually { use x = null in return 1 }
 *)
+
+#endif // !FABLE_COMPILER
 
 /// Generates unique stamps
 type UniqueStampGenerator<'T when 'T : equality>() = 
