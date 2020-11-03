@@ -1950,12 +1950,16 @@ type TcResultsSinkImpl(tcGlobals, ?sourceText: ISourceText) =
             sourceText |> Option.map (fun sourceText ->
                 let positions =
                     [|
+#if FABLE_COMPILER
+                        yield! SourceText.lineStartPositions sourceText
+#else
                         yield 0
                         for i in 1..sourceText.Length do
                             let c = sourceText.[i-1]
                             if c = '\r' && i < sourceText.Length && sourceText.[i] = '\n' then ()
                             elif c = '\r' then yield i
                             elif c = '\n' then yield i
+#endif
                         yield sourceText.Length
                     |]
                 { SourceText = sourceText

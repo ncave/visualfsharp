@@ -28,6 +28,10 @@ type ISourceText =
 module SourceText =
 
     val ofString : string -> ISourceText
+#if FABLE_COMPILER
+    val lineStartPositions : sourceText: ISourceText -> int[]
+    val indentOf : sourceText: ISourceText -> lineNum: int -> int
+#endif
 
 //
 // NOTE: the code in this file is a drop-in replacement runtime for Lexing.fsi from the FsLexYacc repository

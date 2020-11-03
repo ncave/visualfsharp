@@ -43,11 +43,15 @@ module XmlDocParsing =
 
     let getXmlDocablesImpl(sourceText: ISourceText, input: ParsedInput option) =
         let indentOf (lineNum: int) =
+#if FABLE_COMPILER
+            SourceText.indentOf sourceText lineNum
+#else
             let mutable i = 0
             let line = sourceText.GetLineString(lineNum-1) // -1 because lineNum reported by xmldocs are 1-based, but array is 0-based
             while i < line.Length && line.Chars(i) = ' ' do
                 i <- i + 1
             i
+#endif
 
         let isEmptyXmlDoc (preXmlDoc: PreXmlDoc) =
             preXmlDoc.ToXmlDoc(false, None).IsEmpty

@@ -27,6 +27,85 @@ type ISourceText =
 
     abstract CopyTo : sourceIndex: int * destination: char [] * destinationIndex: int * count: int -> unit
 
+#if FABLE_COMPILER
+
+[<Sealed>]
+type StringBuffer(str: string) =
+    let hash = str.GetHashCode()
+    let buffer = Array.init str.Length (fun i -> uint16 (str.[i]))
+    let CR = uint16 '\r'
+    let LF = uint16 '\n'
+    let SP = uint16 ' '
+
+    let positions =
+        [|  yield 0
+            for i in 0..(buffer.Length-1) do
+                let c = buffer.[i]
+                if c = CR && i+1 < buffer.Length && buffer.[i+1] = LF then ()
+                elif c = CR || c = LF then yield i+1
+        |]
+
+    let lineStartPos lineIndex =
+        if lineIndex < 0 then 0
+        elif lineIndex >= positions.Length then buffer.Length
+        else positions.[lineIndex]
+
+    let lineEndPos lineIndex =
+        (lineStartPos (lineIndex + 1)) - 1
+
+    let indentOf lineNum =
+        let lineStart = lineStartPos (lineNum - 1)
+        let lineEnd = lineEndPos (lineNum - 1)
+        let mutable i = 0
+        while i <= lineEnd && buffer.[lineStart + i] = SP do
+            i <- i + 1
+        i
+
+    override __.GetHashCode() = hash
+
+    override __.Equals(obj: obj) =
+        match obj with
+        | :? StringBuffer as other -> buffer.Equals(other.Buffer)
+        | _ -> false
+
+    member __.Buffer = buffer
+    member __.LineStartPositions = positions
+    member __.IndentOf(lineNum) = indentOf lineNum
+
+    interface ISourceText with
+
+        member __.Item with get index = char (buffer.[index])
+        member __.Length = buffer.Length
+        member __.GetLineCount() = positions.Length
+
+        member __.GetLastCharacterPosition() =
+            let line = positions.Length - 1
+            let col = buffer.Length - 1 - positions.[line]
+            (line + 1, col + 1)
+
+        member __.GetLineString(lineIndex) =
+            let startPos = lineStartPos lineIndex
+            let endPos = lineEndPos lineIndex
+            let chars = [| for i in startPos..endPos -> char (buffer.[i]) |]
+            System.String(chars)
+
+        member __.GetSubTextString(start, length) =
+            let startPos = max 0 start
+            let endPos = max 0 (min (start + length - 1) (buffer.Length - 1))
+            let chars = [| for i in startPos..endPos -> char (buffer.[i]) |]
+            System.String(chars)
+
+        member this.SubTextEquals(target, startIndex) =
+            target = (this :> ISourceText).GetSubTextString(startIndex, target.Length)
+
+        member this.ContentEquals(sourceText) =
+            this.Buffer.Equals((sourceText :?> StringBuffer).Buffer)
+
+        member __.CopyTo(_sourceIndex, _destination, _destinationIndex, _count) =
+            raise(System.NotImplementedException())
+
+#endif //FABLE_COMPILER
+
 [<Sealed>]
 type StringText(str: string) =
 
@@ -115,7 +194,14 @@ type StringText(str: string) =
 
 module SourceText =
 
+#if FABLE_COMPILER
+    let ofString str = StringBuffer(str) :> ISourceText
+    let lineStartPositions (sourceText: ISourceText) = (sourceText :?> StringBuffer).LineStartPositions
+    let indentOf (sourceText: ISourceText) lineNum = (sourceText :?> StringBuffer).IndentOf lineNum
+#else
     let ofString str = StringText(str) :> ISourceText
+#endif
+
 // NOTE: the code in this file is a drop-in replacement runtime for Lexing.fs from the FsLexYacc repository
 
 namespace Internal.Utilities.Text.Lexing
@@ -307,7 +393,8 @@ namespace Internal.Utilities.Text.Lexing
 
         static member FromSourceText (supportsFeature: LanguageFeature -> bool, sourceText: ISourceText) =
 #if FABLE_COMPILER
-            let arr = Array.init sourceText.Length (fun i -> uint16 (sourceText.Item i))
+            // let arr = Array.init sourceText.Length (fun i -> uint16 (sourceText.Item i))
+            let arr = (sourceText :?> StringBuffer).Buffer
             LexBuffer.FromArrayNoCopy (supportsFeature, arr)
 #else
             let mutable currentSourceIndex = 0
