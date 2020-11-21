@@ -46,7 +46,11 @@ type StableNiceNameGenerator() =
 
     let lockObj = obj()
 
+#if FABLE_COMPILER
+    let names = new Dictionary<(string * float), string>(100)
+#else
     let names = new Dictionary<(string * int64), string>(100)
+#endif
     let basicNameCounts = new Dictionary<string, int>(100)
 
     member x.GetUniqueCompilerGeneratedName (name, m: range, uniq) =
@@ -94,19 +98,20 @@ type internal CompilerGlobalState () =
     member __.IlxGenNiceNameGenerator = ilxgenGlobalNng
 
 /// Unique name generator for stamps attached to lambdas and object expressions
-type Unique = int64
 
 //++GLOBAL MUTABLE STATE (concurrency-safe)
 #if FABLE_COMPILER
-let newUnique = let i = ref 0L in fun () -> i := !i + 1L; !i
+type Unique = float
+let newUnique = let i = ref 0. in fun () -> i := !i + 1.; !i
 #else
+type Unique = int64
 let newUnique = let i = ref 0L in fun () -> System.Threading.Interlocked.Increment i
 #endif
 
 /// Unique name generator for stamps attached to to val_specs, tycon_specs etc.
 //++GLOBAL MUTABLE STATE (concurrency-safe)
 #if FABLE_COMPILER
-let newStamp = let i = ref 0L in fun () -> i := !i + 1L; !i
+let newStamp = let i = ref 0. in fun () -> i := !i + 1.; !i
 #else
 let newStamp = let i = ref 0L in fun () -> System.Threading.Interlocked.Increment i
 #endif

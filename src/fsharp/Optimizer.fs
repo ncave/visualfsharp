@@ -432,7 +432,11 @@ type IncrementalOptimizationEnv =
 
     static member Empty = 
         { latestBoundId = None 
+#if FABLE_COMPILER
+          dontInline = Zset.empty LanguagePrimitives.FastGenericComparer<float>
+#else
           dontInline = Zset.empty Int64.order
+#endif
           typarInfos = []
           functionVal = None 
           dontSplitVars = ValMap.Empty

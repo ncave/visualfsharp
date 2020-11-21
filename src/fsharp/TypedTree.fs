@@ -33,7 +33,11 @@ open FSharp.Compiler.ExtensionTyping
 open FSharp.Core.CompilerServices
 #endif
 
+#if FABLE_COMPILER
+type Stamp = float
+#else
 type Stamp = int64
+#endif
 
 type StampMap<'T> = Map<Stamp, 'T>
 
@@ -2182,7 +2186,11 @@ type Typar =
     static member NewUnlinked() : Typar = 
         { typar_id = Unchecked.defaultof<_>
           typar_flags = Unchecked.defaultof<_>
+#if FABLE_COMPILER
+          typar_stamp = -1.
+#else
           typar_stamp = -1L
+#endif
           typar_solution = Unchecked.defaultof<_>
           typar_astype = Unchecked.defaultof<_>
           typar_opt_data = Unchecked.defaultof<_> }
@@ -2213,7 +2221,11 @@ type Typar =
         | _ -> ty
 
     /// Indicates if a type variable has been linked. Only used during unpickling of F# metadata.
+#if FABLE_COMPILER
+    member x.IsLinked = x.typar_stamp <> -1.
+#else
     member x.IsLinked = x.typar_stamp <> -1L
+#endif
 
     /// Indicates if a type variable has been solved.
     member x.IsSolved = 
@@ -4040,6 +4052,9 @@ type AnonRecdTypeInfo =
                    | TupInfo.Const b -> yield (if b then 0uy else 1uy)
                    for id in sortedIds do 
                        for c in id.idText do yield byte c; yield byte (int32 c >>> 8) |]
+#if FABLE_COMPILER
+            |> System.BitConverter.Int64BitsToDouble
+#endif
         let sortedNames = Array.map textOfId sortedIds
         { Assembly = ccu; TupInfo = tupInfo; SortedIds = sortedIds; Stamp = stamp; SortedNames = sortedNames }
 
