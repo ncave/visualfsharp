@@ -624,11 +624,7 @@ type FSharpLineTokenizer(lexbuf: UnicodeLexing.Lexbuf,
     // so we need to split it into tokens that are used by VS for colorization
 
     // Stack for tokens that are split during postprocessing
-#if FABLE_COMPILER
-    let tokenStack = Internal.Utilities.Text.Parsing.Stack<_>(31)
-#else
     let mutable tokenStack = new Stack<_>()
-#endif
     let delayToken tok = tokenStack.Push tok
 
     // Process: anywhite* #<directive>

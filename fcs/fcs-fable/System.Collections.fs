@@ -6,18 +6,33 @@ namespace System.Collections
 
 module Generic =
 
-    type Queue<'T> =
-        inherit ResizeArray<'T>
-
-        new () = Queue<'T>()
-
-        member x.Enqueue (item: 'T) =
-            x.Add(item)
-
-        member x.Dequeue () =
-            let item = x.Item(0)
-            x.RemoveAt(0)
+    type Queue<'T> internal (items: ResizeArray<'T>) =
+        new () = Queue<'T>(ResizeArray<'T>())
+        new (capacity: int) = Queue<'T>(ResizeArray<'T>(capacity))
+        member _.Count = items.Count
+        member _.Item (i: int) =
+            items.[i]
+        member _.Enqueue (item: 'T) =
+            items.Add(item)
+        member _.Dequeue () =
+            let item = items.Item(0)
+            items.RemoveAt(0)
             item
+
+    type Stack<'T> internal (items: ResizeArray<'T>) =
+        new () = Stack<'T>(ResizeArray<'T>())
+        new (capacity: int) = Stack<'T>(ResizeArray<'T>(capacity))
+        member _.Count = items.Count
+        member _.Item (i: int) =
+            items.[items.Count - 1 - i]
+        member _.Peek () =
+            items.Item(items.Count - 1)
+        member _.Pop () =
+            let item = items.Item(items.Count - 1)
+            items.RemoveAt(items.Count - 1)
+            item
+        member _.Push (item: 'T) =
+            items.Add(item)
 
 module Immutable =
 

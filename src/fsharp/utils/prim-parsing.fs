@@ -87,6 +87,10 @@ type internal Tables<'tok> =
 // This type is in <c>System.dll</c> so for the moment we can't use it in <c>FSharp.Core.dll</c>
 // type Stack<'a> = System.Collections.Generic.Stack<'a>
 
+#if FABLE_COMPILER
+type Stack<'a> = System.Collections.Generic.Stack<'a>
+#else
+
 type Stack<'a>(n)  = 
     let mutable contents = Array.zeroCreate<'a>(n)
     let mutable count = 0
@@ -100,7 +104,7 @@ type Stack<'a>(n)  =
     
     member buf.Count = count
     member buf.Pop() = count <- count - 1; contents.[count]
-    member buf.Peep() = contents.[count - 1]
+    member buf.Peek() = contents.[count - 1]
     member buf.Top(n) = [ for x in contents.[max 0 (count-n)..count - 1] -> x ] |> List.rev
     member buf.Push(x) =
         buf.Ensure(count + 1) 
@@ -114,6 +118,7 @@ type Stack<'a>(n)  =
             System.Console.Write("{0}{1}",(contents.[i]),if i=count-1 then ":" else "-") 
 #endif
           
+#endif
 
 #if DEBUG
 module Flags = 
@@ -274,14 +279,14 @@ module internal Implementation =
 #if DEBUG
             if Flags.debug then System.Console.WriteLine("popStackUntilErrorShifted")
 #endif
-            if stateStack.IsEmpty then 
+            if stateStack.Count = 0 then 
 #if DEBUG
                 if Flags.debug then 
                     System.Console.WriteLine("state stack empty during error recovery - generating parse error")
 #endif
                 failwith "parse error"
             
-            let currState = stateStack.Peep()
+            let currState = stateStack.Peek()
 #if DEBUG
             if Flags.debug then 
                 System.Console.WriteLine("In state {0} during error recovery", currState)
@@ -305,7 +310,7 @@ module internal Implementation =
                 valueStack.Push(ValueInfo(box (), lexbuf.StartPos, lexbuf.EndPos))
                 stateStack.Push(nextState)
             else
-                if valueStack.IsEmpty then 
+                if valueStack.Count = 0 then 
                     failwith "parse error"
 #if DEBUG
                 if Flags.debug then 
@@ -316,11 +321,11 @@ module internal Implementation =
                 popStackUntilErrorShifted(tokenOpt)
 
         while not finished do                                                                                    
-            if stateStack.IsEmpty then 
+            if stateStack.Count = 0 then 
                 finished <- true
             else
-                let state = stateStack.Peep()
-#if DEBUG
+                let state = stateStack.Peek()
+#if DEBUG && !FABLE_COMPILER
                 if Flags.debug then (Console.Write("{0} value(state), state ",valueStack.Count); stateStack.PrintStack())
 #endif
                 let action = 
@@ -380,8 +385,8 @@ module internal Implementation =
 #endif
                     // For every range to reduce merge it
                     for i = 0 to n - 1 do
-                        if valueStack.IsEmpty then failwith "empty symbol stack"
-                        let topVal = valueStack.Peep()                                  // Grab topVal
+                        if valueStack.Count = 0 then failwith "empty symbol stack"
+                        let topVal = valueStack.Peek()                                  // Grab topVal
                         valueStack.Pop() |> ignore
                         stateStack.Pop() |> ignore
 
@@ -411,7 +416,7 @@ module internal Implementation =
                         let redResult = reduction parseState
                         let valueInfo = ValueInfo(redResult, lhsPos.[0], lhsPos.[1])
                         valueStack.Push(valueInfo)
-                        let currState = stateStack.Peep()
+                        let currState = stateStack.Peek()
                         let newGotoState = gotoTable.Read(int tables.productionToNonTerminalTable.[prod], currState)
                         stateStack.Push(newGotoState)
 
@@ -474,7 +479,13 @@ module internal Implementation =
                                     if not (explicit.Contains(tag)) then 
                                          yield tag ] in
 
+#if FABLE_COMPILER
+                        let stateStack =
+                            let len = min 12 stateStack.Count
+                            [ for i=0 to len-1 do yield stateStack.[i] ]
+#else
                         let stateStack = stateStack.Top(12) in
+#endif
                         let reducibleProductions = 
                             [ for state in stateStack do 
                                yield stateToProdIdxsTable.ReadAll(state)  ]
@@ -504,7 +515,7 @@ module internal Implementation =
 #endif
         done                                                                                                     
         // OK, we're done - read off the overall generated value
-        valueStack.Peep().value
+        valueStack.Peek().value
 
 type internal Tables<'tok> with
     member tables.Interpret (lexer, lexbuf, initialState) = 
