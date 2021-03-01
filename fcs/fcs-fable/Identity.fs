@@ -2,6 +2,7 @@ module IdentityMonad
 
 type M<'T> = 'T
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Identity =
 
     let inline run (expr: M<'T>): 'T =
@@ -31,30 +32,35 @@ module Identity =
     let inline tryWith (expr: M<'T>) (handler: exn -> M<'T>): M<'T> =
         try ret (run expr) with e -> handler e
 
-    let inline using (resource: 'T when 'T :> System.IDisposable) func =
-        tryFinally (func resource) resource.Dispose
+    let inline using (resource: 'T when 'T :> System.IDisposable) (func: 'T -> M<'U>): M<'U> =
+        tryFinally (func resource) (fun () -> resource.Dispose())
 
-    let inline zero () =
+    let inline zero (): M<'T> =
         ret Unchecked.defaultof<'T>
 
-    let inline whileLoop (pred: unit -> bool) body =
-        while pred () do body ()
+    let rec whileLoop (pred: unit -> bool) body =
+        if pred() then body |> bind (fun _ -> whileLoop pred body)
+        else zero ()
 
     let inline forLoop (collection: seq<'T>) func =
-        let en = collection.GetEnumerator()
-        using en (fun ie -> whileLoop ie.MoveNext (fun () -> func ie.Current))
+        let ie = collection.GetEnumerator()
+        tryFinally
+            (whileLoop
+                (fun () -> ie.MoveNext())
+                (delay (fun () -> func ie.Current)))
+            (fun () -> ie.Dispose())
 
     type IdentityBuilder() =
-        member inline __.Bind(expr, func) = bind func expr
-        member inline __.Return(value) = ret value
-        member inline __.ReturnFrom(expr) = expr
-        member inline __.Delay(func) = delay func
-        member inline __.Combine(expr1, expr2) = combine expr1 expr2
-        member inline __.For(collection, func) = forLoop collection func
-        member inline __.TryWith(expr, handler) = tryWith expr handler
-        member inline __.TryFinally(expr, compensation) = tryFinally expr compensation
-        member inline __.Using(resource, expr) = using resource expr
-        member inline __.While(pred, body) = whileLoop pred body
-        member inline __.Zero() = zero ()
+        member __.Bind(expr, func) = bind func expr
+        member __.Return(value) = ret value
+        member __.ReturnFrom(expr) = expr
+        member __.Delay(func) = delay func
+        member __.Combine(expr1, expr2) = combine expr1 expr2
+        member __.For(collection, func) = forLoop collection func
+        member __.TryWith(expr, handler) = tryWith expr handler
+        member __.TryFinally(expr, compensation) = tryFinally expr compensation
+        member __.Using(resource, expr) = using resource expr
+        member __.While(pred, body) = whileLoop pred body
+        member __.Zero() = zero ()
 
 let identity = Identity.IdentityBuilder()
