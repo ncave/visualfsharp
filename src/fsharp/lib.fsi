@@ -204,8 +204,10 @@ val equalOn: f:('a -> 'b) -> x:'a -> y:'a -> bool when 'b: equality
 /// Buffer printing utility
 val bufs: f:(StringBuilder -> unit) -> string
 
+#if !FABLE_COMPILER
 /// Writing to output stream via a string buffer.
 val writeViaBuffer : os:TextWriter -> f:(StringBuilder -> 'a -> unit) -> x:'a -> unit
+#endif
 
 type Graph<'Data,'Id when 'Id: comparison> =
 
@@ -238,6 +240,7 @@ val inline cacheOptRef: cache:'a option ref -> f:(unit -> 'a) -> 'a
 
 val inline tryGetCacheValue: cache:cache<'a> -> NonNullSlot<'a> voption
 
+#if !FABLE_COMPILER
 module AsyncUtil =
 
     /// Represents the reified result of an asynchronous computation.
@@ -261,6 +264,7 @@ module UnmanagedProcessExecutionOptions =
 
 module StackGuard =
     val EnsureSufficientExecutionStack: recursionDepth:int -> unit
+#endif //!FABLE_COMPILER
 
 [<RequireQualifiedAccessAttribute>]
 type MaybeLazy<'T> =

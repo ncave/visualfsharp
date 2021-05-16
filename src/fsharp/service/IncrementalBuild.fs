@@ -6,7 +6,9 @@ open System
 open System.Collections.Generic
 open System.Collections.Immutable
 open System.IO
+#if !FABLE_COMPILER
 open System.Xml
+#endif
 open System.Runtime.InteropServices
 open System.Threading
 open Internal.Utilities.Library
@@ -22,8 +24,10 @@ open FSharp.Compiler.CompilerDiagnostics
 open FSharp.Compiler.CompilerGlobalState
 open FSharp.Compiler.CompilerImports
 open FSharp.Compiler.CompilerOptions
+#if !FABLE_COMPILER
 open FSharp.Compiler.CreateILModule
 open FSharp.Compiler.DependencyManager
+#endif
 open FSharp.Compiler.Diagnostics
 open FSharp.Compiler.EditorServices
 open FSharp.Compiler.ErrorLogger
@@ -42,6 +46,19 @@ open FSharp.Compiler.TypedTreeOps
 
 open Internal.Utilities
 open Internal.Utilities.Collections
+
+#if FABLE_COMPILER
+// stub
+type IncrementalBuilder() =
+    member x.IncrementUsageCount () =
+        { new System.IDisposable with member __.Dispose() = () }
+    member x.IsAlive = false
+    static member KeepBuilderAlive (builderOpt: IncrementalBuilder option) = 
+        match builderOpt with 
+        | Some builder -> builder.IncrementUsageCount() 
+        | None -> { new System.IDisposable with member __.Dispose() = () }
+
+#else //!FABLE_COMPILER
 
 [<AutoOpen>]
 module internal IncrementalBuild =
@@ -1500,3 +1517,5 @@ type IncrementalBuilder(tcGlobals,
 
         return builderOpt, diagnostics
       }
+
+#endif //!FABLE_COMPILER

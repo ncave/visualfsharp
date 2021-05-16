@@ -21,10 +21,15 @@ let mutable progress = false
 // Intended to be a general hook to control diagnostic output when tracking down bugs
 let mutable tracking = false
 
+#if FABLE_COMPILER
+let condition (s: string) = ignore s; false
+let GetEnvInteger (e: string) (dflt: int) = ignore e; dflt
+#else
 let condition s =
     try (System.Environment.GetEnvironmentVariable(s) <> null) with _ -> false
 
 let GetEnvInteger e dflt = match System.Environment.GetEnvironmentVariable(e) with null -> dflt | t -> try int t with _ -> dflt
+#endif
 
 let dispose (x:System.IDisposable) = match x with null -> () | x -> x.Dispose()
 
@@ -302,11 +307,13 @@ let bufs f =
     f buf
     buf.ToString()
 
+#if !FABLE_COMPILER
 /// Writing to output stream via a string buffer.
 let writeViaBuffer (os: TextWriter) f x =
     let buf = System.Text.StringBuilder 100
     f buf x
     os.Write(buf.ToString())
+#endif
 
 //---------------------------------------------------------------------------
 // Imperative Graphs
@@ -398,6 +405,8 @@ type Dumper(x:obj) =
      [<DebuggerBrowsable(DebuggerBrowsableState.Collapsed)>]
      member self.Dump = sprintf "%A" x
 #endif
+
+#if !FABLE_COMPILER
 
 //---------------------------------------------------------------------------
 // AsyncUtil
@@ -543,6 +552,8 @@ module StackGuard =
         if recursionDepth > MaxUncheckedRecursionDepth then
             RuntimeHelpers.EnsureSufficientExecutionStack ()
 
+#endif //!FABLE_COMPILER
+
 [<RequireQualifiedAccess>]
 type MaybeLazy<'T> =
     | Strict of 'T
@@ -583,6 +594,9 @@ type DisposablesTracker() =
 module ArrayParallel =
 
     let inline iteri f (arr: 'T []) =
+#if FABLE_COMPILER
+        Array.iteri f arr
+#else
         let parallelOptions = ParallelOptions(MaxDegreeOfParallelism = max (min Environment.ProcessorCount arr.Length) 1)
         try
             Parallel.For(0, arr.Length, parallelOptions, fun i ->
@@ -591,6 +605,7 @@ module ArrayParallel =
         with
         | :? AggregateException as ex when ex.InnerExceptions.Count = 1 ->
             raise(ex.InnerExceptions.[0])
+#endif
 
     let inline iter f (arr: 'T []) =
         arr |> iteri (fun _ item -> f item)

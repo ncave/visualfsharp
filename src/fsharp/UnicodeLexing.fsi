@@ -15,5 +15,7 @@ val public FunctionAsLexbuf: (LanguageFeature -> bool) * (LexBufferChar[] * int 
 
 val public SourceTextAsLexbuf: (LanguageFeature -> bool) * ISourceText -> Lexbuf
 
+#if !FABLE_COMPILER
 /// Will not dispose of the stream reader.
 val public StreamReaderAsLexbuf: (LanguageFeature -> bool) * StreamReader -> Lexbuf
+#endif

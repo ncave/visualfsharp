@@ -76,7 +76,11 @@ module internal PervasiveAutoOpens =
         let mutable tPrev = None
         fun showTimes descr ->
             if showTimes then 
+#if FABLE_COMPILER
+                let t = 0.0
+#else
                 let t = Process.GetCurrentProcess().UserProcessorTime.TotalSeconds
+#endif
                 let prev = match tPrev with None -> 0.0 | Some t -> t
                 let first = match tFirst with None -> (tFirst <- Some t; t) | Some t -> t
                 printf "ilwrite: TIME %10.3f (total)   %10.3f (delta) - %s\n" (t - first) (t - prev) descr
@@ -86,8 +90,13 @@ module internal PervasiveAutoOpens =
 
     let notFound() = raise (KeyNotFoundException())
 
-[<Struct>]
 /// An efficient lazy for inline storage in a class type. Results in fewer thunks.
+#if FABLE_COMPILER
+type InlineDelayInit<'T when 'T : not struct>(f: unit -> 'T) = 
+    let store = lazy(f())
+    member x.Value = store.Force()
+#else
+[<Struct>]
 type InlineDelayInit<'T when 'T : not struct> = 
     new (f: unit -> 'T) = {store = Unchecked.defaultof<'T>; func = Func<_>(f) } 
     val mutable store : 'T
@@ -100,6 +109,7 @@ type InlineDelayInit<'T when 'T : not struct> =
         let res = LazyInitializer.EnsureInitialized(&x.store, x.func) 
         x.func <- Unchecked.defaultof<_>
         res
+#endif
 
 //-------------------------------------------------------------------------
 // Library: projections
@@ -311,7 +321,9 @@ module List =
         | _ -> true
 
     let mapq (f: 'T -> 'T) inp =
+#if !FABLE_COMPILER
         assert not (typeof<'T>.IsValueType) 
+#endif
         match inp with
         | [] -> inp
         | [h1a] -> 
@@ -486,7 +498,11 @@ module ResizeArray =
     /// This is done to help prevent a stop-the-world collection of the single large array, instead allowing for a greater
     /// probability of smaller collections. Stop-the-world is still possible, just less likely.
     let mapToSmallArrayChunks f (inp: ResizeArray<'t>) =
+#if FABLE_COMPILER
+        let itemSizeBytes = 8
+#else
         let itemSizeBytes = sizeof<'t>
+#endif
         // rounding down here is good because it ensures we don't go over
         let maxArrayItemCount = LOH_SIZE_THRESHOLD_BYTES / itemSizeBytes
 
@@ -547,7 +563,7 @@ module String =
 
     let lowerCaseFirstChar (str: string) =
         if String.IsNullOrEmpty str 
-         || Char.IsLower(str, 0) then str else 
+         || Char.IsLower(str.[0]) then str else 
         let strArr = toCharArray str
         match Array.tryHead strArr with
         | None -> str
@@ -576,14 +592,14 @@ module String =
     let split options (separator: string []) (value: string) = 
         if isNull value then null else value.Split(separator, options)
 
-    let (|StartsWith|_|) pattern value =
+    let (|StartsWith|_|) (pattern: string) value =
         if String.IsNullOrWhiteSpace value then
             None
         elif value.StartsWithOrdinal pattern then
             Some()
         else None
 
-    let (|Contains|_|) pattern value =
+    let (|Contains|_|) (pattern: string) value =
         if String.IsNullOrWhiteSpace value then
             None
         elif value.Contains pattern then
@@ -669,10 +685,12 @@ module internal LockAutoOpens =
 
     let AssumeLockWithoutEvidence<'LockTokenType when 'LockTokenType :> LockToken> () = Unchecked.defaultof<'LockTokenType>
 
+#if !FABLE_COMPILER
 /// Encapsulates a lock associated with a particular token-type representing the acquisition of that lock.
 type Lock<'LockTokenType when 'LockTokenType :> LockToken>() = 
     let lockObj = obj()
     member _.AcquireLock f = lock lockObj (fun () -> f (AssumeLockWithoutEvidence<'LockTokenType>()))
+#endif
 
 //---------------------------------------------------
 // Misc
@@ -835,6 +853,69 @@ type CancellableBuilder() =
 module CancellableAutoOpens =
     let cancellable = CancellableBuilder()
 
+#if FABLE_COMPILER
+
+type Eventually<'T> =
+    | Done of 'T
+    | NotYetDone of (CancellationToken -> Eventually<'T>)
+
+module Eventually =
+
+    let inline ret x = Done x
+
+    let rec forceWhile ctok check e =
+        match e with
+        | Done x -> Some x
+        | NotYetDone work ->
+            if not(check())
+            then None
+            else forceWhile ctok check (work ctok)
+
+    let force ctok e = Option.get (forceWhile ctok (fun () -> true) e)
+
+    let toCancellable e =
+        Cancellable (fun ct -> ValueOrCancelled.Value (force ct e))
+
+    let rec bind k e =
+        match e with
+        | Done x -> k x
+        | NotYetDone work -> NotYetDone (fun ctok -> bind k (work ctok))
+
+    let map f e = bind (f >> ret) e
+
+    let fold f acc seq =
+        (Done acc, seq) ||> Seq.fold (fun acc x -> acc |> bind (fun acc -> f acc x))
+
+    let each f seq =
+        fold (fun acc x -> f x |> map (fun y -> y :: acc)) [] seq |> map List.rev
+
+    let rec catch e =
+        match e with
+        | Done x -> Done(Result x)
+        | NotYetDone work ->
+            NotYetDone (fun ctok ->
+                let res = try Result(work ctok) with | e -> Exception e
+                match res with
+                | Result cont -> catch cont
+                | Exception e -> Done(Exception e))
+
+    let delay (f: unit -> Eventually<'T>) =
+        NotYetDone (fun _ctok -> f())
+
+    let tryFinally e compensation =
+        catch e 
+        |> bind (fun res ->
+            compensation()
+            match res with
+            | Result v -> Eventually.Done v
+            | Exception e -> raise e)
+
+    let tryWith e handler =
+        catch e 
+        |> bind (function Result v -> Done v | Exception e -> handler e)
+
+#else //!FABLE_COMPILER
+
 /// Computations that can cooperatively yield
 ///
 ///    - You can take an Eventually value and run it with Eventually.forceForTimeSlice
@@ -983,6 +1064,7 @@ module Eventually =
 
     let reusing resourcef e = Eventually.Delimited(resourcef, e)
 
+#endif //!FABLE_COMPILER
    
 type EventuallyBuilder() = 
 
@@ -1034,7 +1116,7 @@ type UniqueStampGenerator<'T when 'T : equality>() =
 
     member this.Encode str = encode str
 
-    member this.Table = encodeTab.Keys
+    member this.Table = encodeTab.Keys :> ICollection<'T>
 
 /// memoize tables (all entries cached, never collected)
 type MemoizationTable<'T, 'U>(compute: 'T -> 'U, keyComparer: IEqualityComparer<'T>, ?canMemoize) = 
@@ -1099,12 +1181,16 @@ type LazyWithContext<'T, 'ctxt> =
         match x.funcOrException with 
         | null -> x.value 
         | _ -> 
+#if FABLE_COMPILER
+            x.UnsynchronizedForce(ctxt)
+#else
             // Enter the lock in case another thread is in the process of evaluating the result
             Monitor.Enter x;
             try 
                 x.UnsynchronizedForce ctxt
             finally
                 Monitor.Exit x
+#endif
 
     member x.UnsynchronizedForce ctxt = 
         match x.funcOrException with 

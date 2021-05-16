@@ -287,23 +287,27 @@ let ParseInput (lexer, errorLogger: ErrorLogger, lexbuf: UnicodeLexing.Lexbuf, d
         delayLogger.CommitDelayedDiagnostics filteringErrorLogger
 
 // Show all tokens in the stream, for testing purposes
-let ShowAllTokensAndExit (shortFilename, tokenizer: LexFilter.LexFilter, lexbuf: LexBuffer<char>) =
+let ShowAllTokensAndExit (shortFilename, tokenizer: LexFilter.LexFilter, lexbuf: UnicodeLexing.Lexbuf) =
     while true do
         printf "tokenize - getting one token from %s\n" shortFilename
         let t = tokenizer.GetToken()
         printf "tokenize - got %s @ %a\n" (Parser.token_to_string t) outputRange lexbuf.LexemeRange
         match t with
+#if !FABLE_COMPILER
         | Parser.EOF _ -> exit 0
+#endif
         | _ -> ()
         if lexbuf.IsPastEndOfStream then printf "!!! at end of stream\n"
 
 // Test one of the parser entry points, just for testing purposes
-let TestInteractionParserAndExit (tokenizer: LexFilter.LexFilter, lexbuf: LexBuffer<char>) =
+let TestInteractionParserAndExit (tokenizer: LexFilter.LexFilter, lexbuf: UnicodeLexing.Lexbuf) =
     while true do
         match (Parser.interaction (fun _ -> tokenizer.GetToken()) lexbuf) with
         | ParsedScriptInteraction.Definitions(l, m) -> printfn "Parsed OK, got %d defs @ %a" l.Length outputRange m
         | ParsedScriptInteraction.HashDirective (_, m) -> printfn "Parsed OK, got hash @ %a" outputRange m
+#if !FABLE_COMPILER
     exit 0
+#endif
 
 // Report the statistics for testing purposes
 let ReportParsingStatistics res =
@@ -392,6 +396,8 @@ let ParseOneInputLexbuf (tcConfig: TcConfig, lexResourceManager, conditionalComp
         EmptyParsedInput(filename, isLastCompiland)
 
 let ValidSuffixes = FSharpSigFileSuffixes@FSharpImplFileSuffixes
+
+#if !FABLE_COMPILER
 
 let checkInputFile (tcConfig: TcConfig) filename =
     let lower = String.lowercase filename
@@ -626,6 +632,8 @@ let ApplyMetaCommandsFromInputToTcConfig (tcConfig: TcConfig, inp: ParsedInput, 
         (tcConfigB, inp, pathOfMetaCommandSource, ())
     TcConfig.Create(tcConfigB, validate=false)
 
+#endif //!FABLE_COMPILER
+
 /// Build the initial type checking environment
 let GetInitialTcEnv (assemblyName: string, initm: range, tcConfig: TcConfig, tcImports: TcImports, tcGlobals) =
     let initm = initm.StartRange
@@ -643,6 +651,8 @@ let GetInitialTcEnv (assemblyName: string, initm: range, tcConfig: TcConfig, tcI
         with e -> errorRecovery e initm; tcEnv
     else
         tcEnv
+
+#if !FABLE_COMPILER
 
 /// Inject faults into checking
 let CheckSimulateException(tcConfig: TcConfig) =
@@ -667,6 +677,8 @@ let CheckSimulateException(tcConfig: TcConfig) =
     | Some("tc-oc") -> raise(System.OperationCanceledException())
     | Some("tc-fail") -> failwith "simulated"
     | _ -> ()
+
+#endif //!FABLE_COMPILER
 
 //----------------------------------------------------------------------------
 // Type-check sets of files
@@ -759,7 +771,10 @@ let TypeCheckOneInputEventually (checkForErrors, tcConfig: TcConfig, tcImports: 
 
     eventually {
         try
+
+#if !FABLE_COMPILER
           CheckSimulateException tcConfig
+#endif
 
           let m = inp.Range
           let amap = tcImports.GetImportMap()
@@ -884,9 +899,11 @@ let TypeCheckOneInput (ctok, checkForErrors, tcConfig, tcImports, tcGlobals, pre
     RequireCompilationThread ctok
     TypeCheckOneInputEventually (checkForErrors, tcConfig, tcImports, tcGlobals, prefixPathOpt, TcResultsSink.NoSink, tcState, inp, false)
         |> Eventually.force CancellationToken.None
+#if !FABLE_COMPILER
         |> function
            | ValueOrCancelled.Value v -> v
            | ValueOrCancelled.Cancelled ce ->  raise ce // this condition is unexpected, since CancellationToken.None was passed
+#endif
 
 /// Finish checking multiple files (or one interactive entry into F# Interactive)
 let TypeCheckMultipleInputsFinish(results, tcState: TcState) =

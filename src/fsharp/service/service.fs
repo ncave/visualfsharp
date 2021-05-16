@@ -19,9 +19,13 @@ open FSharp.Compiler.CompilerConfig
 open FSharp.Compiler.CompilerDiagnostics
 open FSharp.Compiler.CompilerImports
 open FSharp.Compiler.CompilerOptions
+#if !FABLE_COMPILER
 open FSharp.Compiler.DependencyManager
+#endif
 open FSharp.Compiler.Diagnostics
+#if !FABLE_COMPILER
 open FSharp.Compiler.Driver
+#endif
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.ParseAndCheckInputs
 open FSharp.Compiler.ScriptClosure
@@ -42,6 +46,8 @@ module EnvMisc =
     let frameworkTcImportsCacheStrongSize = GetEnvInteger "FCS_frameworkTcImportsCacheStrongSizeDefault" 8
     let maxMBDefault =  GetEnvInteger "FCS_MaxMB" 1000000 // a million MB = 1TB = disabled
     //let maxMBDefault = GetEnvInteger "FCS_maxMB" (if sizeof<int> = 4 then 1700 else 3400)
+
+#if !FABLE_COMPILER
 
 //----------------------------------------------------------------------------
 // BackgroundCompiler
@@ -1490,3 +1496,4 @@ type CompilerEnvironment() =
         let ext = Path.GetExtension file
         singleFileProjectExtensions |> List.exists(fun e-> 0 = String.Compare(e, ext, StringComparison.OrdinalIgnoreCase))
 
+#endif //!FABLE_COMPILER
