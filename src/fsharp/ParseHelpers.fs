@@ -220,7 +220,7 @@ and LexCont = LexerContinuation
 // Parse IL assembly code
 //------------------------------------------------------------------------
 
-let ParseAssemblyCodeInstructions s (isFeatureSupported: LanguageFeature -> bool) m : IL.ILInstr[] = 
+let ParseAssemblyCodeInstructions (s: string) (isFeatureSupported: LanguageFeature -> bool) m : IL.ILInstr[] = 
 #if NO_INLINE_IL_PARSER
     ignore s
     ignore isFeatureSupported
@@ -236,7 +236,7 @@ let ParseAssemblyCodeInstructions s (isFeatureSupported: LanguageFeature -> bool
       errorR(Error(FSComp.SR.astParseEmbeddedILError(), m)); [||]
 #endif
 
-let ParseAssemblyCodeType s (isFeatureSupported: Features.LanguageFeature -> bool) m =
+let ParseAssemblyCodeType (s: string) (isFeatureSupported: Features.LanguageFeature -> bool) m =
     ignore s
     ignore isFeatureSupported
 

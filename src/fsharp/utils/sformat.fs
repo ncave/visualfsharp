@@ -10,7 +10,7 @@
 
 #nowarn "52" // The value has been copied to ensure the original is not mutated by this operation
 
-#if COMPILER
+#if COMPILER || FABLE_COMPILER
 namespace FSharp.Compiler.Text
 #else
 // FSharp.Core.dll:
@@ -149,7 +149,7 @@ module TaggedText =
     let space = tagSpace " "
     let equals = tagOperator "="
 
-#if COMPILER
+#if COMPILER || FABLE_COMPILER
     let tagAlias t = mkTag TextTag.Alias t
     let keywordFunctions =
         [
@@ -366,6 +366,8 @@ module Layout =
     let unfoldL selector folder state count =
         boundedUnfoldL selector folder (fun _ -> false) state count
           
+#if !FABLE_COMPILER
+
 /// These are a typical set of options used to control structured formatting.
 [<NoEquality; NoComparison>]
 type FormatOptions =
@@ -1366,3 +1368,5 @@ module Display =
         formatter.Format (ShowAll, value, typValue) |> layout_to_string options
 #endif
 
+
+#endif //!FABLE_COMPILER

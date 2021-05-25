@@ -12,7 +12,7 @@
 //
 // Note no layout objects are ever transferred between the above implementations.
 
-#if COMPILER
+#if COMPILER || FABLE_COMPILER
 namespace FSharp.Compiler.Text
 #else
 namespace Microsoft.FSharp.Text.StructuredPrintfImpl
@@ -24,7 +24,7 @@ namespace Microsoft.FSharp.Text.StructuredPrintfImpl
     open Microsoft.FSharp.Collections
     open Microsoft.FSharp.Primitives.Basics
 
-#if COMPILER
+#if COMPILER || FABLE_COMPILER
 
     /// Data representing joints in structured layouts of terms.  The representation
     /// of this data type is only for the consumption of formatting engines.
@@ -126,7 +126,7 @@ namespace Microsoft.FSharp.Text.StructuredPrintfImpl
 
         val comma: TaggedText
 
-#if COMPILER
+#if COMPILER || FABLE_COMPILER
         val tagNamespace: string -> TaggedText
         val tagParameter: string -> TaggedText
         val tagSpace: string -> TaggedText
@@ -332,6 +332,8 @@ namespace Microsoft.FSharp.Text.StructuredPrintfImpl
         /// If reach maxLength (before exhausting) then truncate.
         val unfoldL: selector:('T -> Layout) -> folder:('State -> ('T * 'State) option) -> state:'State -> count:int -> Layout list
 
+#if !FABLE_COMPILER
+
     /// A record of options to control structural formatting.
     /// For F# Interactive properties matching those of this value can be accessed via the 'fsi'
     /// value.
@@ -404,3 +406,5 @@ namespace Microsoft.FSharp.Text.StructuredPrintfImpl
 #if COMPILER
         val fsi_any_to_layout: options:FormatOptions -> value:'T * typValue:Type -> Layout
 #endif  
+
+#endif //!FABLE_COMPILER

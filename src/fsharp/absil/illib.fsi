@@ -51,6 +51,11 @@ module internal PervasiveAutoOpens =
 
     val notFound: unit -> 'a
 
+#if FABLE_COMPILER
+type internal InlineDelayInit<'T when 'T: not struct> =
+    new: f:(unit -> 'T) -> InlineDelayInit<'T>
+    member Value: 'T
+#else
 [<StructAttribute>]
 type internal InlineDelayInit<'T when 'T: not struct> =
 
@@ -58,6 +63,7 @@ type internal InlineDelayInit<'T when 'T: not struct> =
     val mutable store: 'T
     val mutable func: Func<'T>
     member Value: 'T
+#endif
   
 module internal Order =
 
@@ -296,11 +302,13 @@ type internal LockToken =
         inherit ExecutionToken
     end
   
+#if !FABLE_COMPILER
 /// Encapsulates a lock associated with a particular token-type representing the acquisition of that lock.
 type internal Lock<'LockTokenType when 'LockTokenType :> LockToken> =
 
     new: unit -> Lock<'LockTokenType>
     member AcquireLock: f:('LockTokenType -> 'a) -> 'a
+#endif
   
 [<AutoOpen>]
 module internal LockAutoOpens =
@@ -427,6 +435,51 @@ type internal CancellableBuilder =
 module internal CancellableAutoOpens =
     val cancellable: CancellableBuilder
 
+#if FABLE_COMPILER
+
+type internal Eventually<'T> =
+    | Done of 'T
+    | NotYetDone of (CancellationToken -> Eventually<'T>)
+
+module internal Eventually =
+
+    /// Return a simple value as the result of an eventually computation
+    val inline ret: x:'a -> Eventually<'a>
+
+    val force: ctok:CancellationToken -> e:Eventually<'a> -> 'a
+
+    val toCancellable: e:Eventually<'T> -> Cancellable<'T>
+
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val map: f:('a -> 'b) -> e:Eventually<'a> -> Eventually<'b>
+
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val bind: k:('a -> Eventually<'b>) -> e:Eventually<'a> -> Eventually<'b>
+
+    /// Fold a computation over a collection
+    //
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val fold : f:('a -> 'b -> Eventually<'a>) -> acc:'a -> seq:seq<'b> -> Eventually<'a>
+
+    /// Map a computation over a collection
+    //
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val each : f:('a -> Eventually<'b>) -> seq:seq<'a> -> Eventually<'b list>
+
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val catch: e:Eventually<'a> -> Eventually<ResultOrException<'a>>
+
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val delay: f:(unit -> Eventually<'T>) -> Eventually<'T>
+
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val tryFinally : e:Eventually<'a> -> compensation:(unit -> unit) -> Eventually<'a>
+
+    // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.
+    val tryWith : e:Eventually<'a> -> handler:(System.Exception -> Eventually<'a>) -> Eventually<'a>
+
+#else //!FABLE_COMPILER
+
 /// Cancellable computations that can cooperatively yield 
 ///
 ///    - You can take an Eventually value and run it with Eventually.forceForTimeSlice
@@ -497,6 +550,8 @@ module internal Eventually =
 
     /// Create the resource and install it on the stack each time the Eventually is restarted
     val reusing: resourcef: (unit -> IDisposable) -> e:Eventually<'T> -> Eventually<'T>
+
+#endif //!FABLE_COMPILER
 
 [<Class>]
 // Inlined for better stack traces, replacing ranges of the "runtime" code in the lambdas with ranges in user code.

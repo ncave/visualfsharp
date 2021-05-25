@@ -10,7 +10,9 @@ open FSharp.Compiler
 open FSharp.Compiler.AbstractIL.IL
 open FSharp.Compiler.CheckExpressions
 open FSharp.Compiler.CompilerConfig
+#if !FABLE_COMPILER
 open FSharp.Compiler.DependencyManager
+#endif
 open FSharp.Compiler.ErrorLogger
 open FSharp.Compiler.Optimizer
 open FSharp.Compiler.TypedTree
@@ -42,6 +44,9 @@ val IsOptimizationDataResource: ILResource -> bool
 val IsReflectedDefinitionsResource: ILResource -> bool
 
 val GetSignatureDataResourceName: ILResource -> string
+val GetOptimizationDataResourceName: ILResource -> string
+
+#if !FABLE_COMPILER
 
 /// Encode the F# interface data into a set of IL attributes and resources
 val EncodeSignatureData:
@@ -61,6 +66,8 @@ val EncodeOptimizationData:
     (CcuThunk * #CcuOptimizationInfo) *
     isIncrementalBuild: bool
       -> ILResource list
+
+#endif //!FABLE_COMPILER
 
 [<RequireQualifiedAccess>]
 type ResolveAssemblyReferenceMode =
@@ -115,6 +122,22 @@ type ImportedAssembly =
       FSharpOptimizationData: Lazy<Option<Optimizer.LazyModuleInfo>>
     }
 
+
+#if FABLE_COMPILER
+
+/// trimmed-down version of TcImports
+[<Sealed>] 
+type TcImports =
+    internal new: unit -> TcImports
+    member FindCcu: range * string -> CcuThunk option
+    member SetTcGlobals: TcGlobals -> unit
+    member GetTcGlobals: unit -> TcGlobals
+    member SetCcuMap: Map<string, ImportedAssembly> -> unit
+    member GetImportedAssemblies: unit -> ImportedAssembly list
+    member GetImportMap: unit -> Import.ImportMap
+    member GetCcusExcludingBase: unit -> CcuThunk list
+
+#else //!FABLE_COMPILER
 
 [<Sealed>] 
 /// Tables of assembly resolutions
@@ -215,3 +238,5 @@ type TcImports =
 /// Process #r in F# Interactive.
 /// Adds the reference to the tcImports and add the ccu to the type checking environment.
 val RequireDLL: ctok: CompilationThreadToken * tcImports: TcImports * tcEnv: TcEnv * thisAssemblyName: string * referenceRange: range * file: string -> TcEnv * (ImportedBinary list * ImportedAssembly list)
+
+#endif //!FABLE_COMPILER

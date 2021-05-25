@@ -31,9 +31,14 @@ module FSharpSymbolPatterns =
 
     let isOperator (name: string) = PrettyNaming.IsOperatorName name
 
+#if FABLE_COMPILER
+    let isUnnamedUnionCaseField (field: FSharpField) =
+        (field.Name.StartsWith "Item") && not (field.Name.Substring(4) |> String.exists (fun c -> not (System.Char.IsDigit c)))
+#else
     let UnnamedUnionFieldRegex = Regex("^Item(\d+)?$", RegexOptions.Compiled)
     
     let isUnnamedUnionCaseField (field: FSharpField) = UnnamedUnionFieldRegex.IsMatch(field.Name)
+#endif
 
     let (|AbbreviatedType|_|) (entity: FSharpEntity) =
         if entity.IsFSharpAbbreviation then Some entity.AbbreviatedType
